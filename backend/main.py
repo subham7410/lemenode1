@@ -4,10 +4,13 @@ from PIL import Image
 import io
 import logging
 
-# ✅ Setup logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+from ai.gemini_analysis import analyze_face_with_gemini
 
+# ---------------- LOGGING ----------------
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger("main")
+
+# ---------------- APP ----------------
 app = FastAPI()
 
 app.add_middleware(
@@ -18,55 +21,54 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# ---------------- ROUTES ----------------
 @app.get("/")
 def root():
     return {"status": "Lemenode1 backend running"}
 
 @app.post("/analyze")
 async def analyze(image: UploadFile = File(None)):
-    logger.info(f"Received analyze request: {image}")
-    
+    logger.info("📥 Analyze request received")
+
+    # 1️⃣ Validate image presence
     if image is None:
-        logger.warning("No image file provided")
-        raise HTTPException(
-            status_code=400,
-            detail="Image field is missing in request"
-        )
+        logger.warning("❌ Image missing")
+        raise HTTPException(status_code=400, detail="Image is required")
 
     contents = await image.read()
-    
-    if not contents:
-        logger.warning("Empty image file received")
-        raise HTTPException(
-            status_code=400,
-            detail="Uploaded image is empty"
-        )
 
-    # ✅ Better validation
+    # 2️⃣ Validate empty image
+    if not contents:
+        logger.warning("❌ Empty image")
+        raise HTTPException(status_code=400, detail="Empty image")
+
+    # 3️⃣ Validate image format
     try:
         img = Image.open(io.BytesIO(contents))
         img.verify()
-        
-        # Reopen for actual processing (verify closes the image)
-        img = Image.open(io.BytesIO(contents))
-        
-        logger.info(f"Valid image received: {img.size}, {img.format}")
-        
+        img = Image.open(io.BytesIO(contents))  # reopen after verify
+        logger.info(f"✅ Image OK: {img.width}x{img.height} {img.format}")
     except Exception as e:
-        logger.error(f"Invalid image: {str(e)}")
-        raise HTTPException(
-            status_code=400,
-            detail=f"Invalid image file: {str(e)}"
-        )
+        logger.error(f"❌ Invalid image: {e}")
+        raise HTTPException(status_code=400, detail="Invalid image")
 
-    # ✅ Temporary mock response
-    return {
-        "face_shape": "oval",
-        "skin_type": "oily",
-        "beard_suitable": True,
-        "image_info": {
-            "width": img.width,
-            "height": img.height,
-            "format": img.format
+    # 4️⃣ Gemini analysis (SAFE)
+    try:
+        result = analyze_face_with_gemini(contents)
+        logger.info("🤖 Gemini analysis success")
+        return result
+    except Exception as e:
+        logger.error(f"🔥 Gemini failed: {e}")
+
+        # ✅ NEVER crash the app
+        return {
+            "face_shape": "unknown",
+            "skin_type": "unknown",
+            "beard_suitable": False,
+            "hairstyle_suggestions": [],
+            "glasses_suggestions": [],
+            "improvement_tips": [
+                "Unable to analyze image clearly.",
+                "Try good lighting and a straight front-facing photo."
+            ]
         }
-    }
