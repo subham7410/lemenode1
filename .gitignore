@@ -1,0 +1,12 @@
+# Node
+node_modules/
+.expo/
+.env
+
+# Python
+venv/
+__pycache__/
+*.pyc
+
+# OS
+.DS_Store
