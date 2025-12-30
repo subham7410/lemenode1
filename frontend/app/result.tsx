@@ -1,11 +1,22 @@
-import { View, Text, ScrollView, StyleSheet, Button } from "react-native";
+import {
+  View,
+  Text,
+  ScrollView,
+  StyleSheet,
+  Button,
+  Pressable,
+} from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
+import { useState } from "react";
 
 export default function Result() {
   const params = useLocalSearchParams();
   const router = useRouter();
 
-  const data = params.data ? JSON.parse(params.data as string) : null;
+  const data =
+    params.data && typeof params.data === "string"
+      ? JSON.parse(params.data)
+      : null;
 
   if (!data) {
     return (
@@ -16,98 +27,95 @@ export default function Result() {
     );
   }
 
+  // ---------------- SCORE LOGIC ----------------
+  const score =
+    (data.visible_issues?.length === 0 ? 90 : 70) +
+    (data.positive_aspects?.length || 0) * 2;
+
   return (
     <ScrollView style={styles.container}>
       <Text style={styles.title}>Your Skin Analysis</Text>
 
-      {/* Skin Profile */}
+      {/* ================= SCORE CARD ================= */}
+      <View style={styles.scoreCard}>
+        <Text style={styles.scoreTitle}>Skin Health Score</Text>
+        <Text style={styles.scoreValue}>{Math.min(score, 95)} / 100</Text>
+        <Text style={styles.scoreHint}>
+          Based on visible skin quality & care indicators
+        </Text>
+      </View>
+
+      {/* ================= SKIN PROFILE ================= */}
       <View style={styles.card}>
         <Text style={styles.cardTitle}>📊 Skin Profile</Text>
-        <Text style={styles.label}>Type:</Text>
+
+        <Text style={styles.label}>Type</Text>
         <Text style={styles.value}>{data.skin_type || "Unknown"}</Text>
 
         {data.skin_tone && (
           <>
-            <Text style={styles.label}>Tone:</Text>
+            <Text style={styles.label}>Tone</Text>
             <Text style={styles.value}>{data.skin_tone}</Text>
           </>
         )}
 
         {data.overall_condition && (
           <>
-            <Text style={styles.label}>Overall Condition:</Text>
+            <Text style={styles.label}>Overall Condition</Text>
             <Text style={styles.value}>{data.overall_condition}</Text>
           </>
         )}
       </View>
 
-      {/* Positive Aspects */}
-      {data.positive_aspects && data.positive_aspects.length > 0 && (
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>✅ Whats Looking Good</Text>
-          {data.positive_aspects.map((item: string, index: number) => (
-            <Text key={index} style={styles.listItem}>
-              • {item}
-            </Text>
-          ))}
-        </View>
+      {/* ================= INTERACTIVE SECTIONS ================= */}
+      {data.positive_aspects?.length > 0 && (
+        <ExpandableCard
+          title="What's Looking Good"
+          icon="✅"
+          items={data.positive_aspects}
+        />
       )}
 
-      {/* Visible Issues */}
-      {data.visible_issues && data.visible_issues.length > 0 && (
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>⚠️ Areas to Address</Text>
-          {data.visible_issues.map((issue: string, index: number) => (
-            <Text key={index} style={styles.listItem}>
-              • {issue}
-            </Text>
-          ))}
-        </View>
+      {data.visible_issues?.length > 0 && (
+        <ExpandableCard
+          title="Areas to Address"
+          icon="⚠️"
+          items={data.visible_issues}
+        />
       )}
 
-      {/* Recommendations */}
-      {data.recommendations && data.recommendations.length > 0 && (
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>💡 Recommendations</Text>
-          {data.recommendations.map((rec: string, index: number) => (
-            <Text key={index} style={styles.listItem}>
-              • {rec}
-            </Text>
-          ))}
-        </View>
+      {data.recommendations?.length > 0 && (
+        <ExpandableCard
+          title="Recommendations"
+          icon="💡"
+          items={data.recommendations}
+        />
       )}
 
-      {/* Product Suggestions */}
-      {data.product_suggestions && data.product_suggestions.length > 0 && (
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>🛍️ Product Suggestions</Text>
-          {data.product_suggestions.map((product: string, index: number) => (
-            <Text key={index} style={styles.listItem}>
-              • {product}
-            </Text>
-          ))}
-        </View>
+      {data.product_suggestions?.length > 0 && (
+        <ExpandableCard
+          title="Product Suggestions"
+          icon="🛍️"
+          items={data.product_suggestions}
+        />
       )}
 
-      {/* Lifestyle Tips */}
-      {data.lifestyle_tips && data.lifestyle_tips.length > 0 && (
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>🌟 Lifestyle Tips</Text>
-          {data.lifestyle_tips.map((tip: string, index: number) => (
-            <Text key={index} style={styles.listItem}>
-              • {tip}
-            </Text>
-          ))}
-        </View>
+      {data.lifestyle_tips?.length > 0 && (
+        <ExpandableCard
+          title="Lifestyle Tips"
+          icon="🌟"
+          items={data.lifestyle_tips}
+        />
       )}
 
-      {/* Error Note (if AI failed but fallback data shown) */}
+      {/* ================= ERROR NOTE ================= */}
       {data.error_note && (
         <View style={styles.warningCard}>
           <Text style={styles.warningText}>ℹ️ {data.error_note}</Text>
         </View>
       )}
 
+      {/* ================= ACTION ================= */}
       <View style={styles.buttonContainer}>
         <Button
           title="← Analyze Another Photo"
@@ -119,25 +127,74 @@ export default function Result() {
   );
 }
 
+/* ================= EXPANDABLE CARD ================= */
+
+function ExpandableCard({
+  title,
+  icon,
+  items,
+}: {
+  title: string;
+  icon: string;
+  items: string[];
+}) {
+  const [open, setOpen] = useState(true);
+
+  return (
+    <View style={styles.card}>
+      <Pressable onPress={() => setOpen(!open)}>
+        <Text style={styles.cardTitle}>
+          {icon} {title} {open ? "▲" : "▼"}
+        </Text>
+      </Pressable>
+
+      {open &&
+        items.map((item, index) => (
+          <Text key={index} style={styles.listItem}>
+            • {item}
+          </Text>
+        ))}
+    </View>
+  );
+}
+
+/* ================= STYLES ================= */
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 20,
     backgroundColor: "#f5f5f5",
   },
-  errorContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    padding: 20,
-  },
   title: {
     fontSize: 28,
     fontWeight: "bold",
-    marginBottom: 20,
     marginTop: 40,
+    marginBottom: 20,
     textAlign: "center",
     color: "#333",
+  },
+  scoreCard: {
+    backgroundColor: "#E8F0FF",
+    padding: 20,
+    borderRadius: 14,
+    marginBottom: 20,
+    alignItems: "center",
+  },
+  scoreTitle: {
+    fontSize: 16,
+    color: "#555",
+  },
+  scoreValue: {
+    fontSize: 36,
+    fontWeight: "bold",
+    color: "#007AFF",
+  },
+  scoreHint: {
+    fontSize: 12,
+    color: "#666",
+    marginTop: 6,
+    textAlign: "center",
   },
   card: {
     backgroundColor: "white",
@@ -149,18 +206,6 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
-  },
-  warningCard: {
-    backgroundColor: "#FFF3CD",
-    padding: 15,
-    borderRadius: 12,
-    marginBottom: 15,
-    borderWidth: 1,
-    borderColor: "#FFE69C",
-  },
-  warningText: {
-    fontSize: 12,
-    color: "#856404",
   },
   cardTitle: {
     fontSize: 18,
@@ -187,9 +232,27 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     lineHeight: 22,
   },
+  warningCard: {
+    backgroundColor: "#FFF3CD",
+    padding: 15,
+    borderRadius: 12,
+    marginBottom: 15,
+    borderWidth: 1,
+    borderColor: "#FFE69C",
+  },
+  warningText: {
+    fontSize: 12,
+    color: "#856404",
+  },
   buttonContainer: {
     marginTop: 20,
     marginBottom: 50,
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 20,
   },
   error: {
     fontSize: 18,
