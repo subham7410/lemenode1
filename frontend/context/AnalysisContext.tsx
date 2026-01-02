@@ -161,3 +161,11 @@ export function useAnalysis() {
   }
   return context;
 }
+/** history  */
+export type AnalysisHistory = {
+  id: string;
+  date: Date;
+  score: number;
+  skin_type: string;
+  thumbnail?: string;
+};

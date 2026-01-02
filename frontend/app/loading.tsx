@@ -10,7 +10,7 @@ export default function Loading() {
     setTimeout(() => {
       router.push("/result");
     }, 2000);
-  }, []);
+  }, [router]);
 
   return (
     <SafeAreaView style={{ flex: 1, justifyContent: "center" }}>
