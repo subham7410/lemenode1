@@ -42,14 +42,15 @@ export default function Onboarding() {
     setCurrentSlide(currentSlide + 1);
   } else {
     await AsyncStorage.setItem("@onboarding_complete", "true");
-    router.replace("/(tabs)");
+    router.replace("/user-info");
   }
 };
 
 const handleSkip = async () => {
   await AsyncStorage.setItem("@onboarding_complete", "true");
-  router.replace("/(tabs)");
+  router.replace("/user-info");
 };
+
 
 
   const slide = ONBOARDING_SLIDES[currentSlide];
