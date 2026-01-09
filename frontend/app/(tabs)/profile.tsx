@@ -1,9 +1,78 @@
+/**
+ * Profile Screen - Redesigned with Lemenode Design System
+ * User profile with stats, settings, and analysis history
+ */
+
 import { ScrollView, Text, View, StyleSheet, Pressable, Alert } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import { useAnalysis } from "../../context/AnalysisContext";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
+import {
+  colors,
+  textStyles,
+  spacing,
+  layout,
+  radius,
+  shadows,
+  getScoreColor,
+  getScoreLabel,
+} from "../../theme";
+
+// Stat card component
+interface StatCardProps {
+  icon: string;
+  iconColor: string;
+  iconBgColor: string;
+  label: string;
+  value: string;
+}
+
+function StatCard({ icon, iconColor, iconBgColor, label, value }: StatCardProps) {
+  return (
+    <View style={styles.statCard}>
+      <View style={[styles.statIcon, { backgroundColor: iconBgColor }]}>
+        <Ionicons name={icon as any} size={20} color={iconColor} />
+      </View>
+      <Text style={styles.statLabel}>{label}</Text>
+      <Text style={styles.statValue}>{value}</Text>
+    </View>
+  );
+}
+
+// Action row component
+interface ActionRowProps {
+  icon: string;
+  iconColor: string;
+  title: string;
+  subtitle?: string;
+  onPress: () => void;
+  destructive?: boolean;
+}
+
+function ActionRow({ icon, iconColor, title, subtitle, onPress, destructive }: ActionRowProps) {
+  return (
+    <Pressable
+      style={({ pressed }) => [
+        styles.actionRow,
+        pressed && styles.actionRowPressed,
+      ]}
+      onPress={onPress}
+    >
+      <View style={[styles.actionIcon, { backgroundColor: destructive ? colors.errorLight : colors.neutral[100] }]}>
+        <Ionicons name={icon as any} size={22} color={iconColor} />
+      </View>
+      <View style={styles.actionContent}>
+        <Text style={[styles.actionTitle, destructive && styles.actionTitleDestructive]}>
+          {title}
+        </Text>
+        {subtitle && <Text style={styles.actionSubtitle}>{subtitle}</Text>}
+      </View>
+      <Ionicons name="chevron-forward" size={20} color={colors.neutral[300]} />
+    </Pressable>
+  );
+}
 
 export default function Profile() {
   const { user, analysis, clearAnalysis } = useAnalysis();
@@ -38,354 +107,527 @@ export default function Profile() {
     return bmi.toFixed(1);
   };
 
+  const getBMICategory = (bmi: number): { label: string; color: string } => {
+    if (bmi < 18.5) return { label: "Underweight", color: colors.info };
+    if (bmi < 25) return { label: "Normal", color: colors.accent[500] };
+    if (bmi < 30) return { label: "Overweight", color: colors.warning };
+    return { label: "Obese", color: colors.error };
+  };
+
+  const score = analysis?.score ?? null;
+  const bmi = getBMI();
+  const bmiCategory = bmi ? getBMICategory(parseFloat(bmi)) : null;
+
   return (
     <SafeAreaView style={styles.safe} edges={["top"]}>
-      <ScrollView contentContainerStyle={styles.container}>
-        {/* Header */}
+      <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
+        {/* Header with Avatar */}
         <LinearGradient
-          colors={["#6366F1", "#4F46E5"]}
+          colors={colors.gradients.primary}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={styles.header}
         >
           <View style={styles.avatarContainer}>
             <View style={styles.avatar}>
-              <Ionicons name="person" size={48} color="#fff" />
+              <Ionicons name="person" size={40} color={colors.neutral[0]} />
             </View>
+            {score && (
+              <View style={[styles.scoreBadge, { backgroundColor: getScoreColor(score) }]}>
+                <Text style={styles.scoreText}>{score}</Text>
+              </View>
+            )}
           </View>
           <Text style={styles.headerTitle}>Your Profile</Text>
-          {analysis && (
-            <View style={styles.scoreBadge}>
-              <Text style={styles.scoreText}>Score: {analysis.score}</Text>
+          {score && (
+            <View style={styles.scoreStatus}>
+              <Text style={styles.scoreStatusText}>Skin Score: {getScoreLabel(score)}</Text>
             </View>
           )}
         </LinearGradient>
 
-        {/* Profile Info */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Personal Information</Text>
-          
-          <View style={styles.infoGrid}>
-            <View style={styles.infoCard}>
-              <Ionicons name="calendar" size={24} color="#4F46E5" />
-              <Text style={styles.infoLabel}>Age</Text>
-              <Text style={styles.infoValue}>{user.age || "—"} years</Text>
-            </View>
+        {/* Quick Stats */}
+        <View style={styles.statsGrid}>
+          <StatCard
+            icon="calendar"
+            iconColor={colors.primary[600]}
+            iconBgColor={colors.primary[100]}
+            label="Age"
+            value={user.age ? `${user.age} yrs` : "—"}
+          />
+          <StatCard
+            icon="person-outline"
+            iconColor={colors.accent[600]}
+            iconBgColor={colors.accent[100]}
+            label="Gender"
+            value={user.gender ? user.gender.charAt(0).toUpperCase() + user.gender.slice(1) : "—"}
+          />
+          <StatCard
+            icon="resize"
+            iconColor={colors.warning}
+            iconBgColor={colors.warningLight}
+            label="Height"
+            value={user.height ? `${user.height} cm` : "—"}
+          />
+          <StatCard
+            icon="fitness"
+            iconColor={colors.error}
+            iconBgColor={colors.errorLight}
+            label="Weight"
+            value={user.weight ? `${user.weight} kg` : "—"}
+          />
+        </View>
 
-            <View style={styles.infoCard}>
-              <Ionicons name="person-outline" size={24} color="#10B981" />
-              <Text style={styles.infoLabel}>Gender</Text>
-              <Text style={styles.infoValue}>{user.gender || "—"}</Text>
+        {/* BMI Card */}
+        {bmi && (
+          <View style={styles.bmiCard}>
+            <View style={styles.bmiContent}>
+              <View style={styles.bmiHeader}>
+                <Ionicons name="speedometer" size={22} color="#8B5CF6" />
+                <Text style={styles.bmiTitle}>Body Mass Index</Text>
+              </View>
+              <View style={styles.bmiValueRow}>
+                <Text style={styles.bmiValue}>{bmi}</Text>
+                <View style={[styles.bmiCategoryBadge, { backgroundColor: bmiCategory?.color }]}>
+                  <Text style={styles.bmiCategoryText}>{bmiCategory?.label}</Text>
+                </View>
+              </View>
             </View>
-
-            <View style={styles.infoCard}>
-              <Ionicons name="resize" size={24} color="#F59E0B" />
-              <Text style={styles.infoLabel}>Height</Text>
-              <Text style={styles.infoValue}>{user.height || "—"} cm</Text>
-            </View>
-
-            <View style={styles.infoCard}>
-              <Ionicons name="fitness" size={24} color="#EF4444" />
-              <Text style={styles.infoLabel}>Weight</Text>
-              <Text style={styles.infoValue}>{user.weight || "—"} kg</Text>
+            <View style={styles.bmiScale}>
+              <View style={styles.bmiScaleBar}>
+                <View style={[styles.bmiIndicator, { left: `${Math.min((parseFloat(bmi) / 40) * 100, 100)}%` }]} />
+              </View>
+              <View style={styles.bmiLabels}>
+                <Text style={styles.bmiLabel}>18.5</Text>
+                <Text style={styles.bmiLabel}>25</Text>
+                <Text style={styles.bmiLabel}>30</Text>
+              </View>
             </View>
           </View>
+        )}
 
-          {/* BMI Card */}
-          {getBMI() && (
-            <View style={styles.bmiCard}>
-              <View style={styles.bmiIcon}>
-                <Ionicons name="speedometer" size={24} color="#8B5CF6" />
-              </View>
-              <View style={styles.bmiContent}>
-                <Text style={styles.bmiLabel}>Body Mass Index</Text>
-                <Text style={styles.bmiValue}>{getBMI()}</Text>
-              </View>
+        {/* Diet & Ethnicity */}
+        <View style={styles.infoSection}>
+          <View style={styles.infoRow}>
+            <View style={[styles.infoIcon, { backgroundColor: colors.accent[100] }]}>
+              <Ionicons name="restaurant" size={20} color={colors.accent[600]} />
             </View>
-          )}
-
-          {/* Diet Info */}
-          <View style={styles.dietCard}>
-            <Ionicons name="restaurant" size={24} color="#10B981" />
-            <View style={styles.dietContent}>
-              <Text style={styles.dietLabel}>Diet Preference</Text>
-              <Text style={styles.dietValue}>
+            <View style={styles.infoContent}>
+              <Text style={styles.infoLabel}>Diet Preference</Text>
+              <Text style={styles.infoValue}>
                 {user.diet === "veg" ? "🥗 Vegetarian" : "🍗 Non-Vegetarian"}
               </Text>
             </View>
           </View>
-
           {user.ethnicity && (
-            <View style={styles.dietCard}>
-              <Ionicons name="globe" size={24} color="#3B82F6" />
-              <View style={styles.dietContent}>
-                <Text style={styles.dietLabel}>Ethnicity</Text>
-                <Text style={styles.dietValue}>{user.ethnicity}</Text>
+            <View style={styles.infoRow}>
+              <View style={[styles.infoIcon, { backgroundColor: colors.infoLight }]}>
+                <Ionicons name="globe" size={20} color={colors.info} />
+              </View>
+              <View style={styles.infoContent}>
+                <Text style={styles.infoLabel}>Ethnicity</Text>
+                <Text style={styles.infoValue}>{user.ethnicity}</Text>
               </View>
             </View>
           )}
         </View>
 
-        {/* Analysis Status */}
+        {/* Current Analysis */}
         {analysis && (
-          <View style={styles.section}>
+          <View style={styles.analysisSection}>
             <Text style={styles.sectionTitle}>Current Analysis</Text>
             <View style={styles.analysisCard}>
               <View style={styles.analysisRow}>
                 <Text style={styles.analysisLabel}>Skin Type</Text>
-                <Text style={styles.analysisValue}>{analysis.skin_type}</Text>
+                <Text style={styles.analysisValue}>{analysis.skin_type || "—"}</Text>
               </View>
+              <View style={styles.analysisDivider} />
               <View style={styles.analysisRow}>
                 <Text style={styles.analysisLabel}>Skin Tone</Text>
-                <Text style={styles.analysisValue}>{analysis.skin_tone}</Text>
+                <Text style={styles.analysisValue}>{analysis.skin_tone || "—"}</Text>
               </View>
+              <View style={styles.analysisDivider} />
               <View style={styles.analysisRow}>
                 <Text style={styles.analysisLabel}>Condition</Text>
-                <Text style={styles.analysisValue}>{analysis.overall_condition}</Text>
+                <Text style={styles.analysisValue}>{analysis.overall_condition || "—"}</Text>
               </View>
             </View>
           </View>
         )}
 
         {/* Actions */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Actions</Text>
-
-          <Pressable style={styles.actionButton} onPress={handleEditProfile}>
-            <Ionicons name="create" size={24} color="#4F46E5" />
-            <Text style={styles.actionText}>Edit Profile</Text>
-            <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
-          </Pressable>
-
-          <Pressable style={styles.actionButton} onPress={handleClearData}>
-            <Ionicons name="trash" size={24} color="#EF4444" />
-            <Text style={styles.actionText}>Clear Analysis Data</Text>
-            <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
-          </Pressable>
-
-          <Pressable style={styles.actionButton} onPress={() => {}}>
-            <Ionicons name="help-circle" size={24} color="#10B981" />
-            <Text style={styles.actionText}>Help & Support</Text>
-            <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
-          </Pressable>
-
-          <Pressable style={styles.actionButton} onPress={() => {}}>
-            <Ionicons name="shield-checkmark" size={24} color="#8B5CF6" />
-            <Text style={styles.actionText}>Privacy Policy</Text>
-            <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
-          </Pressable>
+        <View style={styles.actionsSection}>
+          <Text style={styles.sectionTitle}>Settings</Text>
+          <View style={styles.actionsCard}>
+            <ActionRow
+              icon="create-outline"
+              iconColor={colors.primary[600]}
+              title="Edit Profile"
+              subtitle="Update your personal information"
+              onPress={handleEditProfile}
+            />
+            <View style={styles.actionDivider} />
+            <ActionRow
+              icon="help-circle-outline"
+              iconColor={colors.accent[600]}
+              title="Help & Support"
+              subtitle="FAQs and contact info"
+              onPress={() => { }}
+            />
+            <View style={styles.actionDivider} />
+            <ActionRow
+              icon="shield-checkmark-outline"
+              iconColor="#8B5CF6"
+              title="Privacy Policy"
+              subtitle="How we protect your data"
+              onPress={() => { }}
+            />
+            <View style={styles.actionDivider} />
+            <ActionRow
+              icon="trash-outline"
+              iconColor={colors.error}
+              title="Clear Analysis Data"
+              onPress={handleClearData}
+              destructive
+            />
+          </View>
         </View>
 
         {/* App Info */}
         <View style={styles.appInfo}>
-          <Text style={styles.appVersion}>SkinGlow AI v1.0.0</Text>
-          <Text style={styles.appSubtext}>Made with ❤️ for healthy skin</Text>
+          <View style={styles.appLogo}>
+            <Ionicons name="sparkles" size={24} color={colors.primary[500]} />
+          </View>
+          <Text style={styles.appName}>Lemenode</Text>
+          <Text style={styles.appVersion}>Version 1.0.0</Text>
+          <Text style={styles.appTagline}>Made with ❤️ for healthy skin</Text>
         </View>
 
-        <View style={{ height: 40 }} />
+        <View style={{ height: spacing[10] }} />
       </ScrollView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: "#F9FAFB" },
-  container: { paddingBottom: 20 },
+  safe: {
+    flex: 1,
+    backgroundColor: colors.background.primary,
+  },
+  container: {
+    paddingBottom: spacing[5],
+  },
+
+  // Header
   header: {
-    paddingHorizontal: 24,
-    paddingTop: 24,
-    paddingBottom: 32,
     alignItems: "center",
-    borderBottomLeftRadius: 32,
-    borderBottomRightRadius: 32,
+    paddingVertical: spacing[8],
+    paddingHorizontal: layout.screenPaddingHorizontal,
+    borderBottomLeftRadius: radius["2xl"],
+    borderBottomRightRadius: radius["2xl"],
   },
   avatarContainer: {
-    marginBottom: 16,
+    position: "relative",
+    marginBottom: spacing[4],
   },
   avatar: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
+    width: 88,
+    height: 88,
+    borderRadius: radius.full,
     backgroundColor: "rgba(255,255,255,0.2)",
     alignItems: "center",
     justifyContent: "center",
-    borderWidth: 4,
-    borderColor: "#fff",
-  },
-  headerTitle: {
-    fontSize: 24,
-    fontWeight: "800",
-    color: "#fff",
-    marginBottom: 8,
+    borderWidth: 3,
+    borderColor: colors.neutral[0],
   },
   scoreBadge: {
-    backgroundColor: "rgba(255,255,255,0.2)",
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-  },
-  scoreText: {
-    color: "#fff",
-    fontWeight: "700",
-    fontSize: 14,
-  },
-  section: {
-    marginTop: 24,
-    paddingHorizontal: 20,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: "700",
-    color: "#111827",
-    marginBottom: 16,
-  },
-  infoGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 12,
-  },
-  infoCard: {
-    width: "48%",
-    backgroundColor: "#fff",
-    padding: 16,
-    borderRadius: 16,
-    alignItems: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
-  },
-  infoLabel: {
-    fontSize: 12,
-    color: "#6B7280",
-    marginTop: 8,
-    marginBottom: 4,
-  },
-  infoValue: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: "#111827",
-    textTransform: "capitalize",
-  },
-  bmiCard: {
-    flexDirection: "row",
-    backgroundColor: "#F5F3FF",
-    padding: 16,
-    borderRadius: 16,
-    marginTop: 12,
-    alignItems: "center",
-  },
-  bmiIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: "#EDE9FE",
+    position: "absolute",
+    bottom: -4,
+    right: -4,
+    width: 36,
+    height: 36,
+    borderRadius: radius.full,
     alignItems: "center",
     justifyContent: "center",
-    marginRight: 12,
+    borderWidth: 3,
+    borderColor: colors.neutral[0],
   },
-  bmiContent: {
-    flex: 1,
+  scoreText: {
+    fontSize: 14,
+    fontFamily: "Inter_700Bold",
+    color: colors.neutral[0],
   },
-  bmiLabel: {
-    fontSize: 13,
-    color: "#5B21B6",
-    marginBottom: 4,
+  headerTitle: {
+    ...textStyles.h3,
+    color: colors.neutral[0],
+    marginBottom: spacing[2],
   },
-  bmiValue: {
-    fontSize: 24,
-    fontWeight: "800",
-    color: "#5B21B6",
+  scoreStatus: {
+    paddingHorizontal: spacing[4],
+    paddingVertical: spacing[2],
+    backgroundColor: "rgba(255,255,255,0.2)",
+    borderRadius: radius.full,
   },
-  dietCard: {
+  scoreStatusText: {
+    ...textStyles.captionMedium,
+    color: colors.neutral[0],
+  },
+
+  // Stats Grid
+  statsGrid: {
     flexDirection: "row",
-    backgroundColor: "#fff",
-    padding: 16,
-    borderRadius: 16,
-    marginTop: 12,
+    flexWrap: "wrap",
+    paddingHorizontal: layout.screenPaddingHorizontal,
+    marginTop: -spacing[6],
+    gap: spacing[3],
+  },
+  statCard: {
+    width: "47%",
+    backgroundColor: colors.neutral[0],
+    borderRadius: radius.lg,
+    padding: spacing[4],
     alignItems: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
+    ...shadows.md,
   },
-  dietContent: {
-    flex: 1,
-    marginLeft: 12,
+  statIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: radius.lg,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: spacing[2],
   },
-  dietLabel: {
-    fontSize: 12,
-    color: "#6B7280",
-    marginBottom: 4,
+  statLabel: {
+    ...textStyles.caption,
+    color: colors.text.tertiary,
+    marginBottom: spacing[1],
   },
-  dietValue: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: "#111827",
+  statValue: {
+    ...textStyles.h4,
+    color: colors.text.primary,
     textTransform: "capitalize",
   },
+
+  // BMI Card
+  bmiCard: {
+    marginHorizontal: layout.screenPaddingHorizontal,
+    marginTop: spacing[5],
+    backgroundColor: "#F5F3FF",
+    borderRadius: radius.xl,
+    padding: spacing[5],
+    ...shadows.sm,
+  },
+  bmiContent: {
+    marginBottom: spacing[4],
+  },
+  bmiHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing[2],
+    marginBottom: spacing[3],
+  },
+  bmiTitle: {
+    ...textStyles.label,
+    color: "#5B21B6",
+  },
+  bmiValueRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing[3],
+  },
+  bmiValue: {
+    fontSize: 36,
+    fontFamily: "Inter_900Black",
+    color: "#5B21B6",
+  },
+  bmiCategoryBadge: {
+    paddingHorizontal: spacing[3],
+    paddingVertical: spacing[1],
+    borderRadius: radius.full,
+  },
+  bmiCategoryText: {
+    ...textStyles.captionMedium,
+    color: colors.neutral[0],
+  },
+  bmiScale: {
+    paddingTop: spacing[2],
+  },
+  bmiScaleBar: {
+    height: 8,
+    backgroundColor: "#E9D5FF",
+    borderRadius: radius.full,
+    position: "relative",
+  },
+  bmiIndicator: {
+    position: "absolute",
+    top: -4,
+    width: 16,
+    height: 16,
+    borderRadius: radius.full,
+    backgroundColor: "#8B5CF6",
+    borderWidth: 3,
+    borderColor: colors.neutral[0],
+    marginLeft: -8,
+  },
+  bmiLabels: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginTop: spacing[2],
+    paddingHorizontal: spacing[2],
+  },
+  bmiLabel: {
+    ...textStyles.caption,
+    color: "#7C3AED",
+    fontSize: 11,
+  },
+
+  // Info Section
+  infoSection: {
+    marginTop: spacing[5],
+    paddingHorizontal: layout.screenPaddingHorizontal,
+    gap: spacing[3],
+  },
+  infoRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: colors.neutral[0],
+    borderRadius: radius.lg,
+    padding: spacing[4],
+    ...shadows.sm,
+  },
+  infoIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: radius.lg,
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: spacing[3],
+  },
+  infoContent: {
+    flex: 1,
+  },
+  infoLabel: {
+    ...textStyles.caption,
+    color: colors.text.tertiary,
+    marginBottom: spacing[0.5],
+  },
+  infoValue: {
+    ...textStyles.bodyMedium,
+    color: colors.text.primary,
+  },
+
+  // Analysis Section
+  analysisSection: {
+    marginTop: spacing[6],
+    paddingHorizontal: layout.screenPaddingHorizontal,
+  },
+  sectionTitle: {
+    ...textStyles.h4,
+    color: colors.text.primary,
+    marginBottom: spacing[3],
+  },
   analysisCard: {
-    backgroundColor: "#fff",
-    borderRadius: 16,
-    padding: 16,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
+    backgroundColor: colors.neutral[0],
+    borderRadius: radius.lg,
+    ...shadows.sm,
+    overflow: "hidden",
   },
   analysisRow: {
     flexDirection: "row",
     justifyContent: "space-between",
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: "#F3F4F6",
+    alignItems: "center",
+    padding: spacing[4],
   },
   analysisLabel: {
-    fontSize: 14,
-    color: "#6B7280",
+    ...textStyles.body,
+    color: colors.text.secondary,
   },
   analysisValue: {
-    fontSize: 14,
-    fontWeight: "700",
-    color: "#111827",
+    ...textStyles.bodyMedium,
+    color: colors.text.primary,
     textTransform: "capitalize",
   },
-  actionButton: {
+  analysisDivider: {
+    height: 1,
+    backgroundColor: colors.border.light,
+    marginHorizontal: spacing[4],
+  },
+
+  // Actions Section
+  actionsSection: {
+    marginTop: spacing[6],
+    paddingHorizontal: layout.screenPaddingHorizontal,
+  },
+  actionsCard: {
+    backgroundColor: colors.neutral[0],
+    borderRadius: radius.lg,
+    ...shadows.sm,
+    overflow: "hidden",
+  },
+  actionRow: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#fff",
-    padding: 16,
-    borderRadius: 16,
-    marginBottom: 12,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
+    padding: spacing[4],
   },
-  actionText: {
+  actionRowPressed: {
+    backgroundColor: colors.neutral[50],
+  },
+  actionIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: radius.lg,
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: spacing[3],
+  },
+  actionContent: {
     flex: 1,
-    fontSize: 16,
-    fontWeight: "600",
-    color: "#111827",
-    marginLeft: 12,
   },
+  actionTitle: {
+    ...textStyles.bodyMedium,
+    color: colors.text.primary,
+  },
+  actionTitleDestructive: {
+    color: colors.error,
+  },
+  actionSubtitle: {
+    ...textStyles.caption,
+    color: colors.text.tertiary,
+    marginTop: spacing[0.5],
+  },
+  actionDivider: {
+    height: 1,
+    backgroundColor: colors.border.light,
+    marginLeft: spacing[16],
+  },
+
+  // App Info
   appInfo: {
     alignItems: "center",
-    marginTop: 32,
-    paddingHorizontal: 20,
+    marginTop: spacing[10],
+    paddingHorizontal: layout.screenPaddingHorizontal,
+  },
+  appLogo: {
+    width: 56,
+    height: 56,
+    borderRadius: radius.xl,
+    backgroundColor: colors.primary[100],
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: spacing[3],
+  },
+  appName: {
+    ...textStyles.h4,
+    color: colors.text.primary,
+    marginBottom: spacing[1],
   },
   appVersion: {
-    fontSize: 14,
-    color: "#9CA3AF",
-    fontWeight: "600",
-    marginBottom: 4,
+    ...textStyles.caption,
+    color: colors.text.tertiary,
+    marginBottom: spacing[2],
   },
-  appSubtext: {
-    fontSize: 12,
-    color: "#D1D5DB",
+  appTagline: {
+    ...textStyles.caption,
+    color: colors.text.disabled,
   },
 });

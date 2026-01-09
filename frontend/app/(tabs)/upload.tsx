@@ -1,3 +1,8 @@
+/**
+ * Upload Screen - Redesigned with Lemenode Design System
+ * Premium skin analysis photo capture experience
+ */
+
 import {
   View,
   Text,
@@ -12,11 +17,21 @@ import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import * as ImagePicker from "expo-image-picker";
 import { Ionicons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
 
 import { useAnalysis } from "../../context/AnalysisContext";
+import { Button } from "../../components/ui";
+import {
+  colors,
+  textStyles,
+  spacing,
+  layout,
+  radius,
+  shadows,
+} from "../../theme";
 
-// ✅ Cloud Run backend URL (FINAL)
-const API_URL ="https://lemenode-backend-466053387222.asia-south1.run.app";
+// Cloud Run backend URL
+const API_URL = "https://lemenode-backend-466053387222.asia-south1.run.app";
 
 export default function Upload() {
   const router = useRouter();
@@ -24,9 +39,11 @@ export default function Upload() {
 
   const [image, setImage] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [loadingMessage, setLoadingMessage] = useState("Analyzing...");
   const [error, setError] = useState<string | null>(null);
+  const [tipsExpanded, setTipsExpanded] = useState(false);
 
-  // 🔒 Force user profile setup
+  // Force user profile setup
   useEffect(() => {
     if (
       !user.age ||
@@ -39,7 +56,27 @@ export default function Upload() {
     }
   }, [user, router]);
 
-  // 📁 Pick image from gallery
+  // Animate loading messages
+  useEffect(() => {
+    if (!loading) return;
+
+    const messages = [
+      "Analyzing skin texture...",
+      "Detecting skin type...",
+      "Identifying concerns...",
+      "Generating recommendations...",
+    ];
+    let index = 0;
+
+    const interval = setInterval(() => {
+      index = (index + 1) % messages.length;
+      setLoadingMessage(messages[index]);
+    }, 2500);
+
+    return () => clearInterval(interval);
+  }, [loading]);
+
+  // Pick image from gallery
   const pickImage = async () => {
     setError(null);
 
@@ -66,7 +103,7 @@ export default function Upload() {
     }
   };
 
-  // 📷 Take photo
+  // Take photo
   const takePhoto = async () => {
     setError(null);
 
@@ -92,15 +129,16 @@ export default function Upload() {
     }
   };
 
-  // 🚀 Send image to backend
+  // Send image to backend
   const analyze = async () => {
     if (!image) return;
 
     setLoading(true);
     setError(null);
+    setLoadingMessage("Preparing image...");
 
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 60000); // 60s
+    const timeout = setTimeout(() => controller.abort(), 60000);
 
     try {
       const formData = new FormData();
@@ -156,88 +194,161 @@ export default function Upload() {
     }
   };
 
-  // 🔁 View last result
+  // View last result
   const viewPreviousResult = () => {
     if (analysis) router.push("/result");
+  };
+
+  // Clear current image
+  const clearImage = () => {
+    setImage(null);
+    setError(null);
   };
 
   return (
     <SafeAreaView style={styles.safe}>
       <View style={styles.container}>
-        <Text style={styles.title}>Skin Analysis</Text>
-        <Text style={styles.subtitle}>
-          Upload a clear face photo for AI analysis
-        </Text>
+        {/* Header */}
+        <View style={styles.header}>
+          <Text style={styles.title}>Skin Analysis</Text>
+          <Text style={styles.subtitle}>
+            Upload a clear face photo for AI-powered analysis
+          </Text>
+        </View>
 
-        {/* IMAGE PREVIEW */}
-        <View style={styles.imageContainer}>
+        {/* Image Preview Area */}
+        <View style={styles.imageSection}>
           {image ? (
-            <Image source={{ uri: image }} style={styles.image} />
-          ) : (
-            <View style={styles.placeholder}>
-              <Ionicons name="camera" size={48} color="#9CA3AF" />
-              <Text style={styles.placeholderText}>
-                No image selected
-              </Text>
+            <View style={styles.imageWrapper}>
+              <Image source={{ uri: image }} style={styles.image} />
+              {!loading && (
+                <Pressable style={styles.clearButton} onPress={clearImage}>
+                  <Ionicons name="close" size={20} color={colors.neutral[0]} />
+                </Pressable>
+              )}
+              {loading && (
+                <View style={styles.loadingOverlay}>
+                  <View style={styles.loadingContent}>
+                    <ActivityIndicator size="large" color={colors.neutral[0]} />
+                    <Text style={styles.loadingText}>{loadingMessage}</Text>
+                  </View>
+                </View>
+              )}
             </View>
+          ) : (
+            <Pressable style={styles.placeholder} onPress={takePhoto}>
+              <View style={styles.placeholderIcon}>
+                <Ionicons name="scan-outline" size={48} color={colors.primary[400]} />
+              </View>
+              <Text style={styles.placeholderTitle}>Tap to capture</Text>
+              <Text style={styles.placeholderHint}>or use buttons below</Text>
+
+              {/* Face guide overlay hint */}
+              <View style={styles.faceGuide}>
+                <View style={styles.faceGuideCorner} />
+                <View style={[styles.faceGuideCorner, styles.faceGuideTopRight]} />
+                <View style={[styles.faceGuideCorner, styles.faceGuideBottomLeft]} />
+                <View style={[styles.faceGuideCorner, styles.faceGuideBottomRight]} />
+              </View>
+            </Pressable>
           )}
         </View>
 
-        {/* PICK BUTTONS */}
-        <View style={styles.buttonRow}>
-          <Pressable style={styles.iconButton} onPress={takePhoto}>
-            <Ionicons name="camera" size={22} color="#4F46E5" />
-            <Text style={styles.iconText}>Camera</Text>
+        {/* Action Buttons */}
+        <View style={styles.actionButtons}>
+          <Pressable
+            style={styles.actionButton}
+            onPress={takePhoto}
+            disabled={loading}
+          >
+            <LinearGradient
+              colors={colors.gradients.primary}
+              style={styles.actionButtonGradient}
+            >
+              <Ionicons name="camera" size={24} color={colors.neutral[0]} />
+            </LinearGradient>
+            <Text style={styles.actionButtonText}>Camera</Text>
           </Pressable>
 
-          <Pressable style={styles.iconButton} onPress={pickImage}>
-            <Ionicons name="images" size={22} color="#4F46E5" />
-            <Text style={styles.iconText}>Gallery</Text>
+          <Pressable
+            style={styles.actionButton}
+            onPress={pickImage}
+            disabled={loading}
+          >
+            <View style={styles.actionButtonOutline}>
+              <Ionicons name="images" size={24} color={colors.primary[600]} />
+            </View>
+            <Text style={styles.actionButtonText}>Gallery</Text>
           </Pressable>
         </View>
 
-        {/* ERROR */}
+        {/* Error Message */}
         {error && (
           <View style={styles.errorBox}>
-            <Ionicons name="alert-circle" size={18} color="#DC2626" />
+            <Ionicons name="alert-circle" size={20} color={colors.error} />
             <Text style={styles.errorText}>{error}</Text>
+            <Pressable onPress={() => setError(null)}>
+              <Ionicons name="close" size={18} color={colors.error} />
+            </Pressable>
           </View>
         )}
 
-        {/* PHOTO TIPS */}
-        <View style={styles.tipCard}>
-          <Text style={styles.tipTitle}>📸 Photo Tips</Text>
-          <Text style={styles.tip}>• Face camera directly</Text>
-          <Text style={styles.tip}>• Natural lighting</Text>
-          <Text style={styles.tip}>• No filters or makeup</Text>
-          <Text style={styles.tip}>• Neutral expression</Text>
-        </View>
-
-        {/* ANALYZE */}
+        {/* Expandable Tips */}
         <Pressable
-          style={[
-            styles.analyzeButton,
-            (!image || loading) && styles.disabled,
-          ]}
-          onPress={analyze}
-          disabled={!image || loading}
+          style={styles.tipsCard}
+          onPress={() => setTipsExpanded(!tipsExpanded)}
         >
-          {loading ? (
-            <View style={styles.loadingRow}>
-              <ActivityIndicator color="#fff" />
-              <Text style={styles.buttonText}>Analyzing…</Text>
+          <View style={styles.tipsHeader}>
+            <View style={styles.tipsIcon}>
+              <Ionicons name="bulb" size={20} color={colors.warning} />
             </View>
-          ) : (
-            <Text style={styles.buttonText}>Analyze My Skin</Text>
+            <Text style={styles.tipsTitle}>Photo Tips</Text>
+            <Ionicons
+              name={tipsExpanded ? "chevron-up" : "chevron-down"}
+              size={20}
+              color={colors.neutral[400]}
+            />
+          </View>
+          {tipsExpanded && (
+            <View style={styles.tipsContent}>
+              <View style={styles.tipRow}>
+                <Ionicons name="checkmark-circle" size={16} color={colors.accent[500]} />
+                <Text style={styles.tipText}>Face the camera directly</Text>
+              </View>
+              <View style={styles.tipRow}>
+                <Ionicons name="checkmark-circle" size={16} color={colors.accent[500]} />
+                <Text style={styles.tipText}>Use natural lighting</Text>
+              </View>
+              <View style={styles.tipRow}>
+                <Ionicons name="checkmark-circle" size={16} color={colors.accent[500]} />
+                <Text style={styles.tipText}>No filters or heavy makeup</Text>
+              </View>
+              <View style={styles.tipRow}>
+                <Ionicons name="checkmark-circle" size={16} color={colors.accent[500]} />
+                <Text style={styles.tipText}>Keep a neutral expression</Text>
+              </View>
+            </View>
           )}
         </Pressable>
 
-        {/* PREVIOUS */}
+        {/* Spacer */}
+        <View style={{ flex: 1 }} />
+
+        {/* Analyze Button */}
+        <Button
+          title={loading ? "Analyzing..." : "Analyze My Skin"}
+          onPress={analyze}
+          disabled={!image || loading}
+          loading={loading}
+          leftIcon={loading ? undefined : "sparkles"}
+          fullWidth
+        />
+
+        {/* Previous Result Link */}
         {analysis && !loading && (
-          <Pressable onPress={viewPreviousResult}>
-            <Text style={styles.linkText}>
-              View Previous Result
-            </Text>
+          <Pressable style={styles.previousLink} onPress={viewPreviousResult}>
+            <Text style={styles.previousLinkText}>View Previous Result</Text>
+            <Ionicons name="arrow-forward" size={16} color={colors.primary[600]} />
           </Pressable>
         )}
       </View>
@@ -246,86 +357,247 @@ export default function Upload() {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: "#F6F7FB" },
-  container: { flex: 1, padding: 20 },
-  title: { fontSize: 28, fontWeight: "700", color: "#111827" },
-  subtitle: {
-    fontSize: 15,
-    color: "#6B7280",
-    marginBottom: 20,
-  },
-  imageContainer: {
-    height: 320,
-    borderRadius: 20,
-    backgroundColor: "#fff",
-    borderWidth: 2,
-    borderColor: "#E5E7EB",
-    borderStyle: "dashed",
-    justifyContent: "center",
-    alignItems: "center",
-    marginBottom: 20,
-  },
-  image: { width: "100%", height: "100%" },
-  placeholder: { alignItems: "center" },
-  placeholderText: {
-    marginTop: 10,
-    fontSize: 15,
-    color: "#9CA3AF",
-  },
-  buttonRow: { flexDirection: "row", gap: 12, marginBottom: 16 },
-  iconButton: {
+  safe: {
     flex: 1,
-    backgroundColor: "#fff",
-    borderRadius: 16,
-    paddingVertical: 16,
+    backgroundColor: colors.background.primary,
+  },
+  container: {
+    flex: 1,
+    padding: layout.screenPaddingHorizontal,
+  },
+
+  // Header
+  header: {
+    marginBottom: spacing[5],
+  },
+  title: {
+    ...textStyles.h2,
+    color: colors.text.primary,
+    marginBottom: spacing[1],
+  },
+  subtitle: {
+    ...textStyles.body,
+    color: colors.text.secondary,
+  },
+
+  // Image Section
+  imageSection: {
+    marginBottom: spacing[5],
+  },
+  imageWrapper: {
+    height: 320,
+    borderRadius: radius.xl,
+    overflow: "hidden",
+    backgroundColor: colors.neutral[200],
+  },
+  image: {
+    width: "100%",
+    height: "100%",
+  },
+  clearButton: {
+    position: "absolute",
+    top: spacing[3],
+    right: spacing[3],
+    width: 32,
+    height: 32,
+    borderRadius: radius.full,
+    backgroundColor: "rgba(0,0,0,0.5)",
     alignItems: "center",
-    borderWidth: 1,
-    borderColor: "#E5E7EB",
+    justifyContent: "center",
   },
-  iconText: {
-    marginTop: 6,
-    fontWeight: "600",
-    color: "#4F46E5",
+  loadingOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(0,0,0,0.6)",
+    alignItems: "center",
+    justifyContent: "center",
   },
+  loadingContent: {
+    alignItems: "center",
+    gap: spacing[3],
+  },
+  loadingText: {
+    ...textStyles.bodyMedium,
+    color: colors.neutral[0],
+  },
+
+  // Placeholder
+  placeholder: {
+    height: 320,
+    borderRadius: radius.xl,
+    borderWidth: 2,
+    borderColor: colors.primary[200],
+    borderStyle: "dashed",
+    backgroundColor: colors.primary[50],
+    alignItems: "center",
+    justifyContent: "center",
+    position: "relative",
+    overflow: "hidden",
+  },
+  placeholderIcon: {
+    width: 80,
+    height: 80,
+    borderRadius: radius.full,
+    backgroundColor: colors.primary[100],
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: spacing[4],
+  },
+  placeholderTitle: {
+    ...textStyles.h4,
+    color: colors.primary[600],
+    marginBottom: spacing[1],
+  },
+  placeholderHint: {
+    ...textStyles.caption,
+    color: colors.text.tertiary,
+  },
+
+  // Face guide corners
+  faceGuide: {
+    position: "absolute",
+    width: 180,
+    height: 220,
+  },
+  faceGuideCorner: {
+    position: "absolute",
+    width: 24,
+    height: 24,
+    borderColor: colors.primary[300],
+    borderTopWidth: 3,
+    borderLeftWidth: 3,
+    borderTopLeftRadius: 8,
+    top: 0,
+    left: 0,
+  },
+  faceGuideTopRight: {
+    left: undefined,
+    right: 0,
+    borderLeftWidth: 0,
+    borderRightWidth: 3,
+    borderTopLeftRadius: 0,
+    borderTopRightRadius: 8,
+  },
+  faceGuideBottomLeft: {
+    top: undefined,
+    bottom: 0,
+    borderTopWidth: 0,
+    borderBottomWidth: 3,
+    borderTopLeftRadius: 0,
+    borderBottomLeftRadius: 8,
+  },
+  faceGuideBottomRight: {
+    top: undefined,
+    bottom: 0,
+    left: undefined,
+    right: 0,
+    borderTopWidth: 0,
+    borderLeftWidth: 0,
+    borderBottomWidth: 3,
+    borderRightWidth: 3,
+    borderTopLeftRadius: 0,
+    borderBottomRightRadius: 8,
+  },
+
+  // Action Buttons
+  actionButtons: {
+    flexDirection: "row",
+    gap: spacing[3],
+    marginBottom: spacing[4],
+  },
+  actionButton: {
+    flex: 1,
+    alignItems: "center",
+  },
+  actionButtonGradient: {
+    width: 56,
+    height: 56,
+    borderRadius: radius.lg,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: spacing[2],
+    ...shadows.md,
+  },
+  actionButtonOutline: {
+    width: 56,
+    height: 56,
+    borderRadius: radius.lg,
+    borderWidth: 2,
+    borderColor: colors.primary[200],
+    backgroundColor: colors.neutral[0],
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: spacing[2],
+  },
+  actionButtonText: {
+    ...textStyles.captionMedium,
+    color: colors.text.secondary,
+  },
+
+  // Error Box
   errorBox: {
     flexDirection: "row",
-    gap: 8,
-    backgroundColor: "#FEE2E2",
-    padding: 12,
-    borderRadius: 12,
-    marginBottom: 14,
-  },
-  errorText: { color: "#DC2626", flex: 1 },
-  tipCard: {
-    backgroundColor: "#EEF2FF",
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 20,
-  },
-  tipTitle: {
-    fontWeight: "600",
-    marginBottom: 8,
-    color: "#111827",
-  },
-  tip: { fontSize: 14, color: "#4B5563", marginBottom: 4 },
-  analyzeButton: {
-    backgroundColor: "#4F46E5",
-    borderRadius: 16,
-    paddingVertical: 18,
     alignItems: "center",
-    marginTop: 6,
+    gap: spacing[2],
+    backgroundColor: colors.errorLight,
+    padding: spacing[3],
+    borderRadius: radius.md,
+    marginBottom: spacing[4],
   },
-  disabled: { opacity: 0.5 },
-  loadingRow: { flexDirection: "row", gap: 10 },
-  buttonText: {
-    color: "#fff",
-    fontWeight: "700",
-    fontSize: 16,
+  errorText: {
+    ...textStyles.caption,
+    color: colors.error,
+    flex: 1,
   },
-  linkText: {
-    textAlign: "center",
-    marginTop: 14,
-    color: "#4F46E5",
-    fontWeight: "600",
+
+  // Tips Card
+  tipsCard: {
+    backgroundColor: colors.warningLight,
+    borderRadius: radius.lg,
+    padding: spacing[4],
+    marginBottom: spacing[4],
+  },
+  tipsHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  tipsIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: radius.sm,
+    backgroundColor: "rgba(245, 158, 11, 0.2)",
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: spacing[3],
+  },
+  tipsTitle: {
+    ...textStyles.label,
+    color: colors.warningDark,
+    flex: 1,
+  },
+  tipsContent: {
+    marginTop: spacing[3],
+    gap: spacing[2],
+  },
+  tipRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing[2],
+  },
+  tipText: {
+    ...textStyles.caption,
+    color: colors.text.secondary,
+  },
+
+  // Previous Result Link
+  previousLink: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: spacing[2],
+    paddingVertical: spacing[4],
+  },
+  previousLinkText: {
+    ...textStyles.label,
+    color: colors.primary[600],
   },
 });

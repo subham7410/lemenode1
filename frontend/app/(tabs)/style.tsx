@@ -1,415 +1,569 @@
-import { ScrollView, Text, View, StyleSheet } from "react-native";
+/**
+ * Style Screen - Redesigned with Lemenode Design System
+ * Fashion and accessory recommendations with visual color palette
+ */
+
+import { ScrollView, Text, View, StyleSheet, Pressable } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import { useAnalysis } from "../../context/AnalysisContext";
 import ProductCard from "../../components/ProductCard";
 import { Ionicons } from "@expo/vector-icons";
+import { useState } from "react";
+import {
+  colors,
+  textStyles,
+  spacing,
+  layout,
+  radius,
+  shadows,
+} from "../../theme";
+
+// Style recommendation card
+interface StyleCardProps {
+  item: string;
+  type: "clothing" | "accessory";
+  index: number;
+}
+
+function StyleCard({ item, type, index }: StyleCardProps) {
+  const isClothing = type === "clothing";
+  const iconName = isClothing ? "shirt-outline" : "diamond-outline";
+  const gradientColors = isClothing
+    ? ["#F3E8FF", "#EDE9FE"] as const
+    : ["#FCE7F3", "#FBE7F3"] as const;
+  const iconColor = isClothing ? "#8B5CF6" : "#EC4899";
+
+  return (
+    <View style={styles.styleCard}>
+      <LinearGradient
+        colors={gradientColors}
+        style={styles.styleCardGradient}
+      >
+        <View style={[styles.styleIcon, { backgroundColor: colors.neutral[0] }]}>
+          <Ionicons name={iconName} size={22} color={iconColor} />
+        </View>
+        <Text style={styles.styleText}>{item}</Text>
+        <Ionicons name="chevron-forward" size={20} color={colors.neutral[400]} />
+      </LinearGradient>
+    </View>
+  );
+}
+
+// Color swatch with label
+interface ColorSwatchProps {
+  color: string;
+  name: string;
+  recommended: boolean;
+}
+
+function ColorSwatch({ color, name, recommended }: ColorSwatchProps) {
+  return (
+    <View style={styles.colorSwatchContainer}>
+      <View style={[styles.colorSwatch, { backgroundColor: color }]}>
+        {recommended && (
+          <View style={styles.swatchBadge}>
+            <Ionicons name="checkmark" size={12} color={colors.neutral[0]} />
+          </View>
+        )}
+      </View>
+      <Text style={styles.colorName}>{name}</Text>
+    </View>
+  );
+}
+
+// Empty state component
+function EmptyState({ icon, message }: { icon: string; message: string }) {
+  return (
+    <View style={styles.emptyState}>
+      <View style={styles.emptyIcon}>
+        <Ionicons name={icon as any} size={40} color={colors.neutral[300]} />
+      </View>
+      <Text style={styles.emptyText}>{message}</Text>
+      <Text style={styles.emptyHint}>Complete your skin analysis to get personalized style tips</Text>
+    </View>
+  );
+}
 
 export default function Style() {
   const { analysis } = useAnalysis();
+  const [activeTab, setActiveTab] = useState<"clothing" | "accessories">("clothing");
 
   const clothing: string[] = analysis?.style?.clothing ?? [];
   const accessories: string[] = analysis?.style?.accessories ?? [];
+  const hasData = clothing.length > 0 || accessories.length > 0;
+
+  // Sample color palettes based on skin tone
+  const recommendedColors = [
+    { color: "#10B981", name: "Emerald" },
+    { color: "#3B82F6", name: "Royal Blue" },
+    { color: "#8B5CF6", name: "Purple" },
+    { color: "#EC4899", name: "Pink" },
+    { color: "#F59E0B", name: "Gold" },
+  ];
+
+  const avoidColors = [
+    { color: "#6B7280", name: "Gray" },
+    { color: "#78716C", name: "Stone" },
+  ];
 
   return (
     <SafeAreaView style={styles.safe} edges={["top"]}>
-      <ScrollView 
+      <ScrollView
         contentContainerStyle={styles.container}
         showsVerticalScrollIndicator={false}
       >
-        {/* Header with Gradient */}
+        {/* Compact Header */}
         <LinearGradient
-          colors={["#8B5CF6", "#7C3AED"]}
+          colors={colors.gradients.style}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={styles.header}
         >
-          <View style={styles.headerIcon}>
-            <Ionicons name="shirt" size={32} color="#fff" />
+          <View style={styles.headerContent}>
+            <View style={styles.headerIcon}>
+              <Ionicons name="shirt" size={24} color={colors.neutral[0]} />
+            </View>
+            <View style={styles.headerText}>
+              <Text style={styles.headerTitle}>Style Guide</Text>
+              <Text style={styles.headerSubtitle}>
+                Complement your natural beauty
+              </Text>
+            </View>
           </View>
-          <Text style={styles.headerTitle}>Style Guide</Text>
-          <Text style={styles.headerSubtitle}>
-            Complement your natural beauty
-          </Text>
         </LinearGradient>
 
-        {/* Clothing Section */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <View style={styles.iconBadge}>
-              <Ionicons name="shirt-outline" size={24} color="#8B5CF6" />
-            </View>
-            <View style={styles.sectionHeaderText}>
-              <Text style={styles.sectionTitle}>Clothing Recommendations</Text>
-              <Text style={styles.sectionSubtitle}>
-                Colors and fabrics that enhance your look
-              </Text>
-            </View>
+        {!hasData ? (
+          <View style={styles.emptyContainer}>
+            <EmptyState
+              icon="color-palette-outline"
+              message="No style data yet"
+            />
           </View>
-
-          {clothing.length > 0 ? (
-            <View style={styles.itemsGrid}>
-              {clothing.map((item, i) => (
-                <View key={i} style={styles.styleCard}>
-                  <LinearGradient
-                    colors={["#F3E8FF", "#EDE9FE"]}
-                    style={styles.styleCardGradient}
-                  >
-                    <View style={styles.styleIcon}>
-                      <Ionicons name="color-palette" size={24} color="#8B5CF6" />
-                    </View>
-                    <Text style={styles.styleText}>{item}</Text>
-                  </LinearGradient>
+        ) : (
+          <>
+            {/* Color Palette Section */}
+            <View style={styles.section}>
+              <View style={styles.sectionHeader}>
+                <View style={[styles.sectionIcon, styles.sectionIconBlue]}>
+                  <Ionicons name="color-filter" size={20} color={colors.info} />
                 </View>
-              ))}
-            </View>
-          ) : (
-            <View style={styles.emptyCard}>
-              <Ionicons name="shirt-outline" size={48} color="#D1D5DB" />
-              <Text style={styles.emptyText}>
-                Get personalized clothing recommendations
-              </Text>
-            </View>
-          )}
-        </View>
-
-        {/* Accessories Section */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <View style={[styles.iconBadge, styles.iconBadgePink]}>
-              <Ionicons name="watch-outline" size={24} color="#EC4899" />
-            </View>
-            <View style={styles.sectionHeaderText}>
-              <Text style={styles.sectionTitle}>Accessories</Text>
-              <Text style={styles.sectionSubtitle}>
-                Complete your look with the right accents
-              </Text>
-            </View>
-          </View>
-
-          {accessories.length > 0 ? (
-            <View style={styles.itemsGrid}>
-              {accessories.map((item, i) => (
-                <View key={i} style={styles.styleCard}>
-                  <LinearGradient
-                    colors={["#FCE7F3", "#FBE7F3"]}
-                    style={styles.styleCardGradient}
-                  >
-                    <View style={[styles.styleIcon, styles.styleIconPink]}>
-                      <Ionicons name="sparkles" size={24} color="#EC4899" />
-                    </View>
-                    <Text style={styles.styleText}>{item}</Text>
-                  </LinearGradient>
+                <View>
+                  <Text style={styles.sectionTitle}>Your Color Palette</Text>
+                  <Text style={styles.sectionSubtitle}>
+                    Based on your skin tone analysis
+                  </Text>
                 </View>
-              ))}
-            </View>
-          ) : (
-            <View style={styles.emptyCard}>
-              <Ionicons name="watch-outline" size={48} color="#D1D5DB" />
-              <Text style={styles.emptyText}>
-                Discover accessory recommendations for you
-              </Text>
-            </View>
-          )}
-        </View>
+              </View>
 
-        {/* Color Palette Section */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <View style={[styles.iconBadge, styles.iconBadgeBlue]}>
-              <Ionicons name="color-filter" size={24} color="#3B82F6" />
-            </View>
-            <View style={styles.sectionHeaderText}>
-              <Text style={styles.sectionTitle}>Your Color Palette</Text>
-              <Text style={styles.sectionSubtitle}>
-                Based on your skin tone analysis
-              </Text>
-            </View>
-          </View>
+              <View style={styles.colorPalette}>
+                <View style={styles.colorGroup}>
+                  <View style={styles.colorGroupHeader}>
+                    <Ionicons name="checkmark-circle" size={18} color={colors.accent[500]} />
+                    <Text style={styles.colorGroupTitle}>Best Colors</Text>
+                  </View>
+                  <View style={styles.colorRow}>
+                    {recommendedColors.map((c, i) => (
+                      <ColorSwatch key={i} color={c.color} name={c.name} recommended />
+                    ))}
+                  </View>
+                </View>
 
-          <View style={styles.colorPalette}>
-            <View style={styles.colorGroup}>
-              <Text style={styles.colorLabel}>Best Colors</Text>
-              <View style={styles.colorRow}>
-                <View style={[styles.colorSwatch, { backgroundColor: "#10B981" }]} />
-                <View style={[styles.colorSwatch, { backgroundColor: "#3B82F6" }]} />
-                <View style={[styles.colorSwatch, { backgroundColor: "#8B5CF6" }]} />
-                <View style={[styles.colorSwatch, { backgroundColor: "#EC4899" }]} />
+                <View style={styles.colorDivider} />
+
+                <View style={styles.colorGroup}>
+                  <View style={styles.colorGroupHeader}>
+                    <Ionicons name="close-circle" size={18} color={colors.error} />
+                    <Text style={styles.colorGroupTitle}>Colors to Avoid</Text>
+                  </View>
+                  <View style={styles.colorRow}>
+                    {avoidColors.map((c, i) => (
+                      <ColorSwatch key={i} color={c.color} name={c.name} recommended={false} />
+                    ))}
+                  </View>
+                </View>
               </View>
             </View>
-            <View style={styles.colorGroup}>
-              <Text style={styles.colorLabel}>Avoid</Text>
-              <View style={styles.colorRow}>
-                <View style={[styles.colorSwatch, { backgroundColor: "#6B7280" }]} />
-                <View style={[styles.colorSwatch, { backgroundColor: "#78716C" }]} />
+
+            {/* Tab Switcher */}
+            <View style={styles.tabContainer}>
+              <Pressable
+                style={[styles.tab, activeTab === "clothing" && styles.tabActive]}
+                onPress={() => setActiveTab("clothing")}
+              >
+                <Ionicons
+                  name="shirt-outline"
+                  size={18}
+                  color={activeTab === "clothing" ? colors.primary[600] : colors.neutral[400]}
+                />
+                <Text style={[styles.tabText, activeTab === "clothing" && styles.tabTextActive]}>
+                  Clothing ({clothing.length})
+                </Text>
+              </Pressable>
+              <Pressable
+                style={[styles.tab, activeTab === "accessories" && styles.tabActive]}
+                onPress={() => setActiveTab("accessories")}
+              >
+                <Ionicons
+                  name="diamond-outline"
+                  size={18}
+                  color={activeTab === "accessories" ? colors.primary[600] : colors.neutral[400]}
+                />
+                <Text style={[styles.tabText, activeTab === "accessories" && styles.tabTextActive]}>
+                  Accessories ({accessories.length})
+                </Text>
+              </Pressable>
+            </View>
+
+            {/* Recommendations Section */}
+            <View style={styles.section}>
+              <View style={styles.recommendationList}>
+                {(activeTab === "clothing" ? clothing : accessories).map((item, i) => (
+                  <StyleCard
+                    key={i}
+                    item={item}
+                    type={activeTab === "clothing" ? "clothing" : "accessory"}
+                    index={i}
+                  />
+                ))}
               </View>
             </View>
-          </View>
-        </View>
+          </>
+        )}
 
-        {/* Info Card */}
-        <View style={styles.infoCard}>
-          <View style={styles.infoIconContainer}>
-            <Ionicons name="star" size={24} color="#8B5CF6" />
+        {/* Style Tip Card */}
+        <View style={styles.tipCard}>
+          <View style={styles.tipIcon}>
+            <Ionicons name="star" size={20} color="#8B5CF6" />
           </View>
-          <View style={styles.infoTextContainer}>
-            <Text style={styles.infoTitle}>Style Tip</Text>
-            <Text style={styles.infoText}>
-              The right colors and fabrics can enhance your natural skin tone and make you look more radiant and confident!
+          <View style={styles.tipContent}>
+            <Text style={styles.tipTitle}>Style Tip</Text>
+            <Text style={styles.tipText}>
+              The right colors and fabrics can enhance your natural skin tone and make you look more radiant!
             </Text>
           </View>
         </View>
 
         {/* Products Section */}
         <View style={styles.productsSection}>
-          <View style={styles.productHeader}>
-            <Ionicons name="bag-handle" size={24} color="#111827" />
+          <View style={styles.productsSectionHeader}>
+            <Ionicons name="bag-handle" size={22} color={colors.text.primary} />
             <Text style={styles.productsTitle}>Style Essentials</Text>
           </View>
           <Text style={styles.productsSubtitle}>
             Curated picks for your wardrobe
           </Text>
 
-          <ProductCard
-            title="UV Protection Sunglasses"
-            price="₹699"
-            image="https://m.media-amazon.com/images/I/61Hf8w5gPBL._SL1500_.jpg"
-            link="https://www.amazon.in/"
-          />
-
-          <ProductCard
-            title="Minimal Analog Watch"
-            price="₹1,299"
-            image="https://m.media-amazon.com/images/I/71qv0xFzHCL._SL1500_.jpg"
-            link="https://www.flipkart.com/"
-          />
-
-          <ProductCard
-            title="Silk Hair Scrunchies Set"
-            price="₹449"
-            image="https://m.media-amazon.com/images/I/71vL8zP4cSL._SL1500_.jpg"
-            link="https://www.amazon.in/"
-          />
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.productsScroll}
+          >
+            <ProductCard
+              title="UV Protection Sunglasses"
+              price="₹699"
+              image="https://m.media-amazon.com/images/I/61Hf8w5gPBL._SL1500_.jpg"
+              link="https://www.amazon.in/"
+            />
+            <ProductCard
+              title="Minimal Analog Watch"
+              price="₹1,299"
+              image="https://m.media-amazon.com/images/I/71qv0xFzHCL._SL1500_.jpg"
+              link="https://www.flipkart.com/"
+            />
+            <ProductCard
+              title="Silk Hair Scrunchies"
+              price="₹449"
+              image="https://m.media-amazon.com/images/I/71vL8zP4cSL._SL1500_.jpg"
+              link="https://www.amazon.in/"
+            />
+          </ScrollView>
         </View>
 
-        <View style={{ height: 40 }} />
+        <View style={{ height: spacing[10] }} />
       </ScrollView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  safe: { 
-    flex: 1, 
-    backgroundColor: "#F9FAFB" 
+  safe: {
+    flex: 1,
+    backgroundColor: colors.background.primary,
   },
-  container: { 
-    paddingBottom: 20 
+  container: {
+    paddingBottom: spacing[5],
   },
+
+  // Header
   header: {
-    paddingHorizontal: 24,
-    paddingTop: 24,
-    paddingBottom: 32,
-    borderBottomLeftRadius: 32,
-    borderBottomRightRadius: 32,
+    paddingHorizontal: layout.screenPaddingHorizontal,
+    paddingVertical: spacing[5],
+    borderBottomLeftRadius: radius.xl,
+    borderBottomRightRadius: radius.xl,
+  },
+  headerContent: {
+    flexDirection: "row",
+    alignItems: "center",
   },
   headerIcon: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
+    width: 48,
+    height: 48,
+    borderRadius: radius.lg,
     backgroundColor: "rgba(255,255,255,0.2)",
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 16,
+    marginRight: spacing[4],
+  },
+  headerText: {
+    flex: 1,
   },
   headerTitle: {
-    fontSize: 32,
-    fontWeight: "800",
-    color: "#fff",
-    marginBottom: 8,
+    ...textStyles.h3,
+    color: colors.neutral[0],
+    marginBottom: spacing[0.5],
   },
   headerSubtitle: {
-    fontSize: 16,
+    ...textStyles.body,
     color: "rgba(255,255,255,0.9)",
-    fontWeight: "500",
   },
+
+  // Empty State
+  emptyContainer: {
+    padding: layout.screenPaddingHorizontal,
+    paddingTop: spacing[10],
+  },
+  emptyState: {
+    alignItems: "center",
+    padding: spacing[8],
+    backgroundColor: colors.neutral[0],
+    borderRadius: radius.xl,
+    ...shadows.sm,
+  },
+  emptyIcon: {
+    width: 80,
+    height: 80,
+    borderRadius: radius.full,
+    backgroundColor: colors.neutral[100],
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: spacing[4],
+  },
+  emptyText: {
+    ...textStyles.h4,
+    color: colors.text.secondary,
+    marginBottom: spacing[2],
+  },
+  emptyHint: {
+    ...textStyles.caption,
+    color: colors.text.tertiary,
+    textAlign: "center",
+  },
+
+  // Section
   section: {
-    marginTop: 24,
-    paddingHorizontal: 20,
+    marginTop: spacing[6],
+    paddingHorizontal: layout.screenPaddingHorizontal,
   },
   sectionHeader: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 16,
+    marginBottom: spacing[4],
   },
-  iconBadge: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: "#EDE9FE",
+  sectionIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: radius.md,
     alignItems: "center",
     justifyContent: "center",
-    marginRight: 12,
+    marginRight: spacing[3],
   },
-  iconBadgePink: {
-    backgroundColor: "#FCE7F3",
-  },
-  iconBadgeBlue: {
-    backgroundColor: "#DBEAFE",
-  },
-  sectionHeaderText: {
-    flex: 1,
+  sectionIconBlue: {
+    backgroundColor: colors.infoLight,
   },
   sectionTitle: {
-    fontSize: 20,
-    fontWeight: "700",
-    color: "#111827",
-    marginBottom: 2,
+    ...textStyles.h4,
+    color: colors.text.primary,
   },
   sectionSubtitle: {
-    fontSize: 13,
-    color: "#6B7280",
+    ...textStyles.caption,
+    color: colors.text.tertiary,
   },
-  itemsGrid: {
-    gap: 12,
+
+  // Color Palette
+  colorPalette: {
+    backgroundColor: colors.neutral[0],
+    borderRadius: radius.xl,
+    padding: spacing[5],
+    ...shadows.sm,
+    borderWidth: 1,
+    borderColor: colors.border.light,
+  },
+  colorGroup: {
+    marginBottom: spacing[4],
+  },
+  colorGroupHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing[2],
+    marginBottom: spacing[3],
+  },
+  colorGroupTitle: {
+    ...textStyles.label,
+    color: colors.text.secondary,
+  },
+  colorRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: spacing[3],
+  },
+  colorSwatchContainer: {
+    alignItems: "center",
+  },
+  colorSwatch: {
+    width: 48,
+    height: 48,
+    borderRadius: radius.md,
+    ...shadows.sm,
+    marginBottom: spacing[1],
+  },
+  swatchBadge: {
+    position: "absolute",
+    bottom: -4,
+    right: -4,
+    width: 18,
+    height: 18,
+    borderRadius: radius.full,
+    backgroundColor: colors.accent[500],
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 2,
+    borderColor: colors.neutral[0],
+  },
+  colorName: {
+    ...textStyles.caption,
+    color: colors.text.tertiary,
+    fontSize: 11,
+  },
+  colorDivider: {
+    height: 1,
+    backgroundColor: colors.border.light,
+    marginVertical: spacing[4],
+  },
+
+  // Tabs
+  tabContainer: {
+    flexDirection: "row",
+    marginTop: spacing[6],
+    marginHorizontal: layout.screenPaddingHorizontal,
+    backgroundColor: colors.neutral[100],
+    borderRadius: radius.lg,
+    padding: spacing[1],
+  },
+  tab: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: spacing[2],
+    paddingVertical: spacing[3],
+    borderRadius: radius.md,
+  },
+  tabActive: {
+    backgroundColor: colors.neutral[0],
+    ...shadows.sm,
+  },
+  tabText: {
+    ...textStyles.captionMedium,
+    color: colors.text.tertiary,
+  },
+  tabTextActive: {
+    color: colors.primary[600],
+  },
+
+  // Recommendation List
+  recommendationList: {
+    gap: spacing[3],
   },
   styleCard: {
-    borderRadius: 16,
+    borderRadius: radius.lg,
     overflow: "hidden",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
+    ...shadows.sm,
   },
   styleCardGradient: {
     flexDirection: "row",
     alignItems: "center",
-    padding: 16,
+    padding: spacing[4],
   },
   styleIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: "#fff",
+    width: 44,
+    height: 44,
+    borderRadius: radius.lg,
     alignItems: "center",
     justifyContent: "center",
-    marginRight: 12,
-  },
-  styleIconPink: {
-    backgroundColor: "#fff",
+    marginRight: spacing[3],
   },
   styleText: {
+    ...textStyles.body,
+    color: colors.text.primary,
     flex: 1,
-    fontSize: 15,
-    color: "#374151",
-    lineHeight: 22,
   },
-  colorPalette: {
-    backgroundColor: "#fff",
-    borderRadius: 16,
-    padding: 20,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
-    borderWidth: 1,
-    borderColor: "#E5E7EB",
-  },
-  colorGroup: {
-    marginBottom: 16,
-  },
-  colorLabel: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#6B7280",
-    marginBottom: 12,
-    textTransform: "uppercase",
-    letterSpacing: 0.5,
-  },
-  colorRow: {
+
+  // Tip Card
+  tipCard: {
     flexDirection: "row",
-    gap: 12,
-  },
-  colorSwatch: {
-    width: 56,
-    height: 56,
-    borderRadius: 12,
-    borderWidth: 2,
-    borderColor: "#fff",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  emptyCard: {
-    backgroundColor: "#fff",
-    borderRadius: 16,
-    padding: 40,
-    alignItems: "center",
-    borderWidth: 2,
-    borderColor: "#E5E7EB",
-    borderStyle: "dashed",
-  },
-  emptyText: {
-    fontSize: 14,
-    color: "#9CA3AF",
-    textAlign: "center",
-    marginTop: 12,
-  },
-  infoCard: {
-    flexDirection: "row",
+    marginHorizontal: layout.screenPaddingHorizontal,
+    marginTop: spacing[6],
+    padding: spacing[4],
     backgroundColor: "#F5F3FF",
-    borderRadius: 16,
-    padding: 16,
-    marginHorizontal: 20,
-    marginTop: 24,
+    borderRadius: radius.lg,
     borderLeftWidth: 4,
     borderLeftColor: "#8B5CF6",
   },
-  infoIconContainer: {
+  tipIcon: {
     width: 40,
     height: 40,
-    borderRadius: 20,
+    borderRadius: radius.md,
     backgroundColor: "#EDE9FE",
     alignItems: "center",
     justifyContent: "center",
+    marginRight: spacing[3],
   },
-  infoTextContainer: {
+  tipContent: {
     flex: 1,
-    marginLeft: 12,
   },
-  infoTitle: {
-    fontSize: 15,
-    fontWeight: "700",
+  tipTitle: {
+    ...textStyles.label,
     color: "#5B21B6",
-    marginBottom: 4,
+    marginBottom: spacing[1],
   },
-  infoText: {
-    fontSize: 13,
+  tipText: {
+    ...textStyles.caption,
     color: "#5B21B6",
-    lineHeight: 18,
+    lineHeight: 20,
   },
+
+  // Products Section
   productsSection: {
-    marginTop: 32,
-    paddingHorizontal: 20,
+    marginTop: spacing[8],
+    paddingHorizontal: layout.screenPaddingHorizontal,
   },
-  productHeader: {
+  productsSectionHeader: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 8,
+    gap: spacing[2],
+    marginBottom: spacing[1],
   },
   productsTitle: {
-    fontSize: 22,
-    fontWeight: "700",
-    color: "#111827",
-    marginLeft: 8,
+    ...textStyles.h4,
+    color: colors.text.primary,
   },
   productsSubtitle: {
-    fontSize: 14,
-    color: "#6B7280",
-    marginBottom: 16,
+    ...textStyles.caption,
+    color: colors.text.tertiary,
+    marginBottom: spacing[4],
+  },
+  productsScroll: {
+    gap: spacing[3],
   },
 });

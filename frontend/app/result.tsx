@@ -1,161 +1,300 @@
-import { View, Text, StyleSheet, Pressable, ScrollView } from "react-native";
+/**
+ * Result Screen - Redesigned with Lemenode Design System
+ * Premium analysis results with animated score and visual insights
+ */
+
+import { View, Text, StyleSheet, Pressable, ScrollView, Animated, Share } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useAnalysis } from "../context/AnalysisContext";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
+import { useEffect, useRef } from "react";
+import { Button } from "../components/ui";
+import {
+  colors,
+  textStyles,
+  spacing,
+  layout,
+  radius,
+  shadows,
+  getScoreColor,
+  getScoreLabel,
+} from "../theme";
+
+// Animated Score Circle
+function ScoreCircle({ score }: { score: number }) {
+  const animatedValue = useRef(new Animated.Value(0)).current;
+  const scoreColor = getScoreColor(score);
+
+  useEffect(() => {
+    Animated.timing(animatedValue, {
+      toValue: score,
+      duration: 1500,
+      useNativeDriver: false,
+    }).start();
+  }, [score]);
+
+  const displayScore = animatedValue.interpolate({
+    inputRange: [0, 100],
+    outputRange: ['0', '100'],
+    extrapolate: 'clamp',
+  });
+
+  return (
+    <View style={styles.scoreContainer}>
+      <View style={[styles.scoreRing, { borderColor: scoreColor }]}>
+        <LinearGradient
+          colors={[scoreColor + '20', scoreColor + '05']}
+          style={styles.scoreInner}
+        >
+          <Animated.Text style={[styles.scoreNumber, { color: scoreColor }]}>
+            {Math.round(score)}
+          </Animated.Text>
+          <Text style={styles.scoreMax}>/ 100</Text>
+        </LinearGradient>
+      </View>
+      <View style={[styles.scoreBadge, { backgroundColor: scoreColor }]}>
+        <Text style={styles.scoreBadgeText}>{getScoreLabel(score)}</Text>
+      </View>
+    </View>
+  );
+}
+
+// Info pill component
+function InfoPill({ icon, label, value, gradientColors }: {
+  icon: string;
+  label: string;
+  value: string;
+  gradientColors: readonly [string, string];
+}) {
+  return (
+    <View style={styles.infoPill}>
+      <LinearGradient colors={gradientColors} style={styles.infoPillIcon}>
+        <Ionicons name={icon as any} size={18} color={colors.neutral[0]} />
+      </LinearGradient>
+      <View style={styles.infoPillContent}>
+        <Text style={styles.infoPillLabel}>{label}</Text>
+        <Text style={styles.infoPillValue}>{value}</Text>
+      </View>
+    </View>
+  );
+}
+
+// Finding item
+function FindingItem({ item, type }: { item: string; type: 'issue' | 'positive' }) {
+  const isPositive = type === 'positive';
+  const iconColor = isPositive ? colors.accent[500] : colors.warning;
+  const bgColor = isPositive ? colors.accent[50] : colors.warningLight;
+
+  return (
+    <View style={[styles.findingItem, { backgroundColor: bgColor }]}>
+      <View style={styles.findingIcon}>
+        <Ionicons
+          name={isPositive ? "checkmark-circle" : "alert-circle"}
+          size={20}
+          color={iconColor}
+        />
+      </View>
+      <Text style={styles.findingText}>{item}</Text>
+    </View>
+  );
+}
+
+// Recommendation card
+function RecommendationCard({ item, index }: { item: string; index: number }) {
+  return (
+    <View style={styles.recCard}>
+      <View style={styles.recNumber}>
+        <Text style={styles.recNumberText}>{index + 1}</Text>
+      </View>
+      <Text style={styles.recText}>{item}</Text>
+    </View>
+  );
+}
+
+// Quick action chips
+function QuickAction({ icon, label, color, onPress }: {
+  icon: string;
+  label: string;
+  color: string;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable
+      style={({ pressed }) => [
+        styles.quickAction,
+        pressed && { opacity: 0.8, transform: [{ scale: 0.97 }] }
+      ]}
+      onPress={onPress}
+    >
+      <View style={[styles.quickActionIcon, { backgroundColor: color + '20' }]}>
+        <Ionicons name={icon as any} size={22} color={color} />
+      </View>
+      <Text style={styles.quickActionLabel}>{label}</Text>
+    </Pressable>
+  );
+}
 
 export default function Result() {
   const { analysis } = useAnalysis();
   const router = useRouter();
 
+  // Share result
+  const handleShare = async () => {
+    try {
+      await Share.share({
+        message: `My skin health score is ${analysis?.score || 0}/100 (${getScoreLabel(analysis?.score || 0)})! Analyzed with SkinGlow AI 🌟`,
+      });
+    } catch (error) {
+      console.log('Share error:', error);
+    }
+  };
+
   if (!analysis) {
     return (
       <SafeAreaView style={styles.safe}>
         <View style={styles.emptyContainer}>
-          <Ionicons name="sad-outline" size={64} color="#999" />
-          <Text style={styles.emptyText}>No analysis available</Text>
-          <Pressable
-            style={styles.button}
+          <View style={styles.emptyIcon}>
+            <Ionicons name="scan-outline" size={48} color={colors.neutral[300]} />
+          </View>
+          <Text style={styles.emptyTitle}>No Analysis Yet</Text>
+          <Text style={styles.emptySubtitle}>
+            Upload a photo to get your personalized skin analysis
+          </Text>
+          <Button
+            title="Start Analysis"
             onPress={() => router.replace("/(tabs)/upload")}
-          >
-            <Text style={styles.buttonText}>Upload Photo</Text>
-          </Pressable>
+            leftIcon="camera"
+          />
         </View>
       </SafeAreaView>
     );
   }
 
   const score = analysis.score ?? 70;
-  
-  const getScoreColor = (s: number) => {
-    if (s >= 85) return "#10B981";
-    if (s >= 75) return "#3B82F6";
-    if (s >= 65) return "#F59E0B";
-    return "#EF4444";
-  };
-
-  const getScoreLabel = (s: number) => {
-    if (s >= 85) return "Excellent";
-    if (s >= 75) return "Good";
-    if (s >= 65) return "Fair";
-    return "Needs Care";
-  };
+  const scoreColor = getScoreColor(score);
 
   return (
     <SafeAreaView style={styles.safe}>
-      <ScrollView contentContainerStyle={styles.container}>
+      <ScrollView
+        contentContainerStyle={styles.container}
+        showsVerticalScrollIndicator={false}
+      >
         {/* Header */}
         <View style={styles.header}>
           <Pressable
-            style={styles.backButton}
+            style={styles.headerButton}
             onPress={() => router.back()}
           >
-            <Ionicons name="close" size={28} color="#111827" />
+            <Ionicons name="close" size={24} color={colors.text.primary} />
           </Pressable>
-          <Text style={styles.headerTitle}>Analysis Result</Text>
-          <View style={{ width: 40 }} />
+          <Text style={styles.headerTitle}>Your Results</Text>
+          <Pressable style={styles.headerButton} onPress={handleShare}>
+            <Ionicons name="share-outline" size={24} color={colors.primary[600]} />
+          </Pressable>
         </View>
 
-        {/* Score Circle */}
-        <View style={styles.scoreSection}>
-          <View
-            style={[
-              styles.scoreCircle,
-              { borderColor: getScoreColor(score) },
-            ]}
-          >
-            <Text style={[styles.scoreText, { color: getScoreColor(score) }]}>
-              {score}
-            </Text>
-            <Text style={styles.scoreSub}>out of 100</Text>
-          </View>
-          <Text style={[styles.scoreLabel, { color: getScoreColor(score) }]}>
-            {getScoreLabel(score)}
-          </Text>
+        {/* Score Section */}
+        <ScoreCircle score={score} />
+
+        {/* Skin Info Pills */}
+        <View style={styles.infoPills}>
+          <InfoPill
+            icon="water"
+            label="Skin Type"
+            value={analysis.skin_type || "Unknown"}
+            gradientColors={colors.gradients.primary}
+          />
+          <InfoPill
+            icon="color-palette"
+            label="Skin Tone"
+            value={analysis.skin_tone || "Unknown"}
+            gradientColors={colors.gradients.style}
+          />
         </View>
 
-        {/* Skin Info */}
-        <View style={styles.infoGrid}>
-          <View style={styles.infoCard}>
-            <Text style={styles.infoLabel}>Skin Type</Text>
-            <Text style={styles.infoValue}>
-              {analysis.skin_type || "Unknown"}
-            </Text>
-          </View>
-          <View style={styles.infoCard}>
-            <Text style={styles.infoLabel}>Skin Tone</Text>
-            <Text style={styles.infoValue}>
-              {analysis.skin_tone || "Unknown"}
-            </Text>
-          </View>
-        </View>
-
-        {/* Issues & Positives */}
-        {analysis.visible_issues && analysis.visible_issues.length > 0 && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>🔍 Observations</Text>
-            <View style={styles.card}>
-              {analysis.visible_issues.map((issue, i) => (
-                <Text key={i} style={styles.issueItem}>
-                  • {issue}
-                </Text>
-              ))}
-            </View>
+        {/* Condition */}
+        {analysis.overall_condition && (
+          <View style={styles.conditionCard}>
+            <Ionicons name="medical" size={20} color={colors.info} />
+            <Text style={styles.conditionText}>{analysis.overall_condition}</Text>
           </View>
         )}
 
-        {analysis.positive_aspects && analysis.positive_aspects.length > 0 && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>✨ Positive Aspects</Text>
-            <View style={[styles.card, styles.positiveCard]}>
-              {analysis.positive_aspects.map((item, i) => (
-                <Text key={i} style={styles.positiveItem}>
-                  ✓ {item}
-                </Text>
-              ))}
-            </View>
-          </View>
-        )}
-
-        {/* Quick Recommendations */}
-        {analysis.recommendations && analysis.recommendations.length > 0 && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>💡 Top Recommendations</Text>
-            <View style={styles.card}>
-              {analysis.recommendations.slice(0, 4).map((rec, i) => (
-                <Text key={i} style={styles.recItem}>
-                  {i + 1}. {rec}
-                </Text>
-              ))}
-            </View>
-          </View>
-        )}
-
-        {/* Action Buttons */}
-        <View style={styles.actionButtons}>
-          <Pressable
-            style={[styles.actionButton, styles.primaryAction]}
+        {/* Quick Actions */}
+        <View style={styles.quickActions}>
+          <QuickAction
+            icon="heart"
+            label="Health"
+            color={colors.error}
             onPress={() => router.push("/(tabs)/health")}
-          >
-            <Ionicons name="heart" size={20} color="#fff" />
-            <Text style={styles.actionButtonText}>View Health Tips</Text>
-          </Pressable>
-
-          <Pressable
-            style={[styles.actionButton, styles.secondaryAction]}
+          />
+          <QuickAction
+            icon="nutrition"
+            label="Food"
+            color={colors.accent[500]}
             onPress={() => router.push("/(tabs)/food")}
-          >
-            <Ionicons name="restaurant" size={20} color="#4F46E5" />
-            <Text style={styles.secondaryActionText}>Food Guide</Text>
-          </Pressable>
+          />
+          <QuickAction
+            icon="shirt"
+            label="Style"
+            color="#8B5CF6"
+            onPress={() => router.push("/(tabs)/style")}
+          />
         </View>
 
-        <Pressable
-          style={styles.newAnalysisButton}
-          onPress={() => router.replace("/(tabs)/upload")}
-        >
-          <Text style={styles.newAnalysisText}>Start New Analysis</Text>
-        </Pressable>
+        {/* Findings Section */}
+        {((analysis.visible_issues?.length ?? 0) > 0 || (analysis.positive_aspects?.length ?? 0) > 0) && (
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Ionicons name="eye" size={20} color={colors.text.primary} />
+              <Text style={styles.sectionTitle}>What We Found</Text>
+            </View>
+
+            <View style={styles.findingsContainer}>
+              {analysis.positive_aspects?.map((item, i) => (
+                <FindingItem key={`pos-${i}`} item={item} type="positive" />
+              ))}
+              {analysis.visible_issues?.map((item, i) => (
+                <FindingItem key={`issue-${i}`} item={item} type="issue" />
+              ))}
+            </View>
+          </View>
+        )}
+
+        {/* Recommendations Section */}
+        {(analysis.recommendations?.length ?? 0) > 0 && (
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Ionicons name="bulb" size={20} color={colors.warning} />
+              <Text style={styles.sectionTitle}>Recommendations</Text>
+            </View>
+
+            <View style={styles.recContainer}>
+              {analysis.recommendations?.slice(0, 5).map((item, i) => (
+                <RecommendationCard key={i} item={item} index={i} />
+              ))}
+            </View>
+          </View>
+        )}
+
+        {/* Bottom Actions */}
+        <View style={styles.bottomActions}>
+          <Button
+            title="View Full Health Plan"
+            onPress={() => router.push("/(tabs)/health")}
+            leftIcon="heart"
+            fullWidth
+          />
+          <Pressable
+            style={styles.newAnalysisLink}
+            onPress={() => router.replace("/(tabs)/upload")}
+          >
+            <Ionicons name="refresh" size={18} color={colors.primary[600]} />
+            <Text style={styles.newAnalysisText}>Take New Photo</Text>
+          </Pressable>
+        </View>
       </ScrollView>
     </SafeAreaView>
   );
@@ -164,180 +303,265 @@ export default function Result() {
 const styles = StyleSheet.create({
   safe: {
     flex: 1,
-    backgroundColor: "#F6F7FB",
+    backgroundColor: colors.background.primary,
   },
   container: {
-    padding: 20,
-    paddingBottom: 40,
+    padding: layout.screenPaddingHorizontal,
+    paddingBottom: spacing[10],
   },
+
+  // Header
   header: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    marginBottom: 24,
+    marginBottom: spacing[6],
   },
-  backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: "#fff",
+  headerButton: {
+    width: 44,
+    height: 44,
+    borderRadius: radius.lg,
+    backgroundColor: colors.neutral[0],
     alignItems: "center",
     justifyContent: "center",
+    ...shadows.sm,
   },
   headerTitle: {
-    fontSize: 20,
-    fontWeight: "700",
-    color: "#111827",
+    ...textStyles.h3,
+    color: colors.text.primary,
   },
-  scoreSection: {
+
+  // Score Circle
+  scoreContainer: {
     alignItems: "center",
-    marginBottom: 32,
+    marginBottom: spacing[6],
   },
-  scoreCircle: {
+  scoreRing: {
     width: 180,
     height: 180,
     borderRadius: 90,
     borderWidth: 8,
+    alignItems: "center",
     justifyContent: "center",
+    marginBottom: spacing[4],
+    ...shadows.lg,
+  },
+  scoreInner: {
+    width: 156,
+    height: 156,
+    borderRadius: 78,
     alignItems: "center",
-    backgroundColor: "#fff",
-    marginBottom: 16,
+    justifyContent: "center",
   },
-  scoreText: {
-    fontSize: 56,
-    fontWeight: "800",
+  scoreNumber: {
+    fontSize: 52,
+    fontFamily: "Inter_900Black",
   },
-  scoreSub: {
-    fontSize: 14,
-    color: "#9CA3AF",
-    marginTop: 4,
+  scoreMax: {
+    ...textStyles.caption,
+    color: colors.text.tertiary,
+    marginTop: spacing[1],
   },
-  scoreLabel: {
-    fontSize: 24,
-    fontWeight: "700",
-    marginTop: 8,
+  scoreBadge: {
+    paddingHorizontal: spacing[5],
+    paddingVertical: spacing[2],
+    borderRadius: radius.full,
   },
-  infoGrid: {
+  scoreBadgeText: {
+    ...textStyles.label,
+    color: colors.neutral[0],
+  },
+
+  // Info Pills
+  infoPills: {
     flexDirection: "row",
-    gap: 12,
-    marginBottom: 24,
+    gap: spacing[3],
+    marginBottom: spacing[5],
   },
-  infoCard: {
+  infoPill: {
     flex: 1,
-    backgroundColor: "#fff",
-    padding: 16,
-    borderRadius: 16,
+    flexDirection: "row",
     alignItems: "center",
+    backgroundColor: colors.neutral[0],
+    padding: spacing[3],
+    borderRadius: radius.lg,
+    ...shadows.sm,
   },
-  infoLabel: {
-    fontSize: 13,
-    color: "#6B7280",
-    marginBottom: 6,
+  infoPillIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: radius.md,
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: spacing[3],
   },
-  infoValue: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: "#111827",
+  infoPillContent: {
+    flex: 1,
+  },
+  infoPillLabel: {
+    ...textStyles.caption,
+    color: colors.text.tertiary,
+  },
+  infoPillValue: {
+    ...textStyles.bodyMedium,
+    color: colors.text.primary,
     textTransform: "capitalize",
   },
+
+  // Condition Card
+  conditionCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing[3],
+    backgroundColor: colors.infoLight,
+    padding: spacing[4],
+    borderRadius: radius.lg,
+    marginBottom: spacing[5],
+    borderLeftWidth: 4,
+    borderLeftColor: colors.info,
+  },
+  conditionText: {
+    ...textStyles.body,
+    color: colors.infoDark,
+    flex: 1,
+  },
+
+  // Quick Actions
+  quickActions: {
+    flexDirection: "row",
+    justifyContent: "space-around",
+    backgroundColor: colors.neutral[0],
+    padding: spacing[4],
+    borderRadius: radius.xl,
+    marginBottom: spacing[6],
+    ...shadows.sm,
+  },
+  quickAction: {
+    alignItems: "center",
+    gap: spacing[2],
+  },
+  quickActionIcon: {
+    width: 52,
+    height: 52,
+    borderRadius: radius.lg,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  quickActionLabel: {
+    ...textStyles.captionMedium,
+    color: colors.text.secondary,
+  },
+
+  // Section
   section: {
-    marginBottom: 20,
+    marginBottom: spacing[6],
+  },
+  sectionHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing[2],
+    marginBottom: spacing[4],
   },
   sectionTitle: {
-    fontSize: 18,
-    fontWeight: "700",
-    color: "#111827",
-    marginBottom: 12,
+    ...textStyles.h4,
+    color: colors.text.primary,
   },
-  card: {
-    backgroundColor: "#fff",
-    padding: 16,
-    borderRadius: 16,
+
+  // Findings
+  findingsContainer: {
+    gap: spacing[3],
   },
-  issueItem: {
-    fontSize: 14,
-    color: "#374151",
-    marginBottom: 8,
-    lineHeight: 20,
+  findingItem: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    padding: spacing[4],
+    borderRadius: radius.lg,
   },
-  positiveCard: {
-    backgroundColor: "#F0FDF4",
-    borderWidth: 1,
-    borderColor: "#86EFAC",
+  findingIcon: {
+    marginRight: spacing[3],
+    marginTop: 2,
   },
-  positiveItem: {
-    fontSize: 14,
-    color: "#166534",
-    marginBottom: 8,
-    lineHeight: 20,
+  findingText: {
+    ...textStyles.body,
+    color: colors.text.primary,
+    flex: 1,
+    lineHeight: 22,
   },
-  recItem: {
-    fontSize: 14,
-    color: "#374151",
-    marginBottom: 10,
-    lineHeight: 20,
+
+  // Recommendations
+  recContainer: {
+    gap: spacing[3],
   },
-  actionButtons: {
-    gap: 12,
-    marginTop: 12,
-    marginBottom: 20,
+  recCard: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    backgroundColor: colors.neutral[0],
+    padding: spacing[4],
+    borderRadius: radius.lg,
+    ...shadows.sm,
   },
-  actionButton: {
+  recNumber: {
+    width: 28,
+    height: 28,
+    borderRadius: radius.full,
+    backgroundColor: colors.primary[100],
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: spacing[3],
+  },
+  recNumberText: {
+    ...textStyles.captionMedium,
+    color: colors.primary[600],
+  },
+  recText: {
+    ...textStyles.body,
+    color: colors.text.primary,
+    flex: 1,
+    lineHeight: 22,
+  },
+
+  // Bottom Actions
+  bottomActions: {
+    marginTop: spacing[4],
+    gap: spacing[4],
+  },
+  newAnalysisLink: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: 10,
-    paddingVertical: 16,
-    borderRadius: 16,
-  },
-  primaryAction: {
-    backgroundColor: "#4F46E5",
-  },
-  actionButtonText: {
-    color: "#fff",
-    fontSize: 16,
-    fontWeight: "700",
-  },
-  secondaryAction: {
-    backgroundColor: "#fff",
-    borderWidth: 2,
-    borderColor: "#4F46E5",
-  },
-  secondaryActionText: {
-    color: "#4F46E5",
-    fontSize: 16,
-    fontWeight: "700",
-  },
-  newAnalysisButton: {
-    alignItems: "center",
-    paddingVertical: 14,
+    gap: spacing[2],
+    paddingVertical: spacing[3],
   },
   newAnalysisText: {
-    color: "#6B7280",
-    fontSize: 15,
-    fontWeight: "600",
+    ...textStyles.label,
+    color: colors.primary[600],
   },
+
+  // Empty State
   emptyContainer: {
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    padding: 40,
+    padding: layout.screenPaddingHorizontal,
   },
-  emptyText: {
-    fontSize: 18,
-    color: "#6B7280",
-    marginTop: 16,
-    marginBottom: 24,
+  emptyIcon: {
+    width: 100,
+    height: 100,
+    borderRadius: radius.full,
+    backgroundColor: colors.neutral[100],
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: spacing[6],
   },
-  button: {
-    backgroundColor: "#4F46E5",
-    paddingHorizontal: 32,
-    paddingVertical: 16,
-    borderRadius: 16,
+  emptyTitle: {
+    ...textStyles.h3,
+    color: colors.text.primary,
+    marginBottom: spacing[2],
   },
-  buttonText: {
-    color: "#fff",
-    fontSize: 16,
-    fontWeight: "700",
+  emptySubtitle: {
+    ...textStyles.body,
+    color: colors.text.secondary,
+    textAlign: "center",
+    marginBottom: spacing[6],
   },
 });

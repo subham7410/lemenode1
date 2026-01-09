@@ -1,185 +1,382 @@
-import { View, Text, StyleSheet, Pressable } from "react-native";
+/**
+ * Onboarding Screen - Redesigned with Lemenode Design System
+ * Premium multi-step introduction with smooth animations
+ */
+
+import { useState, useRef } from "react";
+import {
+  View,
+  Text,
+  StyleSheet,
+  Pressable,
+  Dimensions,
+  Animated,
+  FlatList,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useRouter } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
-import { useState } from "react";
+import { useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import {
+  colors,
+  textStyles,
+  spacing,
+  radius,
+  shadows,
+} from "../theme";
 
-const ONBOARDING_SLIDES = [
+const { width, height } = Dimensions.get("window");
+
+// Onboarding slides data
+const SLIDES = [
   {
-    icon: "camera",
-    title: "Analyze Your Skin",
-    description: "Take a photo and get instant AI-powered skin analysis with personalized recommendations",
-    color: ["#4F46E5", "#7C3AED"],
+    id: "1",
+    icon: "scan",
+    title: "AI Skin Analysis",
+    subtitle: "Smart Detection",
+    description:
+      "Advanced AI analyzes your skin texture, tone, and condition to provide personalized insights.",
+    gradient: colors.gradients.primary,
+    iconBg: "#818CF8",
   },
   {
-    icon: "restaurant",
-    title: "Personalized Nutrition",
-    description: "Get custom food recommendations based on your skin type, age, and dietary preferences",
-    color: ["#10B981", "#059669"],
+    id: "2",
+    icon: "nutrition",
+    title: "Nutrition Guide",
+    subtitle: "Eat for Your Skin",
+    description:
+      "Get customized food recommendations based on your skin type and dietary preferences.",
+    gradient: colors.gradients.food,
+    iconBg: "#34D399",
   },
   {
+    id: "3",
     icon: "heart",
-    title: "Daily Skincare Routine",
-    description: "Follow a tailored skincare routine designed specifically for your skin needs",
-    color: ["#EF4444", "#DC2626"],
+    title: "Health Routines",
+    subtitle: "Daily Habits",
+    description:
+      "Follow personalized skincare routines and lifestyle habits for lasting improvements.",
+    gradient: colors.gradients.health,
+    iconBg: "#F472B6",
   },
   {
-    icon: "trending-up",
-    title: "Track Your Progress",
-    description: "Monitor improvements over time and adjust your routine for optimal results",
-    color: ["#F59E0B", "#D97706"],
+    id: "4",
+    icon: "shirt",
+    title: "Style Advice",
+    subtitle: "Look Your Best",
+    description:
+      "Discover colors and styles that complement your natural beauty and skin tone.",
+    gradient: colors.gradients.style,
+    iconBg: "#A78BFA",
   },
 ];
 
-export default function Onboarding() {
-  const router = useRouter();
-  const [currentSlide, setCurrentSlide] = useState(0);
+// Single slide component
+function Slide({ item, index, scrollX }: { item: typeof SLIDES[0]; index: number; scrollX: Animated.Value }) {
+  const inputRange = [(index - 1) * width, index * width, (index + 1) * width];
 
-  const handleNext = async () => {
-  if (currentSlide < ONBOARDING_SLIDES.length - 1) {
-    setCurrentSlide(currentSlide + 1);
-  } else {
-    await AsyncStorage.setItem("@onboarding_complete", "true");
-    router.replace("/user-info");
-  }
-};
+  const scale = scrollX.interpolate({
+    inputRange,
+    outputRange: [0.8, 1, 0.8],
+    extrapolate: 'clamp',
+  });
 
-const handleSkip = async () => {
-  await AsyncStorage.setItem("@onboarding_complete", "true");
-  router.replace("/user-info");
-};
-
-
-
-  const slide = ONBOARDING_SLIDES[currentSlide];
+  const opacity = scrollX.interpolate({
+    inputRange,
+    outputRange: [0.5, 1, 0.5],
+    extrapolate: 'clamp',
+  });
 
   return (
-    <SafeAreaView style={styles.container}>
-      <LinearGradient
-        colors={slide.color as [string, string]}
-        style={styles.gradient}
-      >
-        {/* Skip Button */}
-        {currentSlide < ONBOARDING_SLIDES.length - 1 && (
-          <Pressable style={styles.skipButton} onPress={handleSkip}>
-            <Text style={styles.skipText}>Skip</Text>
-          </Pressable>
-        )}
+    <View style={styles.slide}>
+      <Animated.View style={[styles.slideContent, { transform: [{ scale }], opacity }]}>
+        {/* Icon Circle */}
+        <View style={[styles.iconCircle, { backgroundColor: item.iconBg }]}>
+          <Ionicons name={item.icon as any} size={48} color={colors.neutral[0]} />
+        </View>
 
-        {/* Icon */}
-        <View style={styles.iconContainer}>
-          <View style={styles.iconCircle}>
-            <Ionicons name={slide.icon as any} size={80} color="#fff" />
+        {/* Subtitle Badge */}
+        <View style={styles.subtitleBadge}>
+          <Text style={styles.subtitleText}>{item.subtitle}</Text>
+        </View>
+
+        {/* Title */}
+        <Text style={styles.slideTitle}>{item.title}</Text>
+
+        {/* Description */}
+        <Text style={styles.slideDescription}>{item.description}</Text>
+      </Animated.View>
+    </View>
+  );
+}
+
+// Pagination dots
+function Pagination({ scrollX, data }: { scrollX: Animated.Value; data: typeof SLIDES }) {
+  return (
+    <View style={styles.pagination}>
+      {data.map((_, index) => {
+        const inputRange = [(index - 1) * width, index * width, (index + 1) * width];
+
+        const dotWidth = scrollX.interpolate({
+          inputRange,
+          outputRange: [8, 24, 8],
+          extrapolate: 'clamp',
+        });
+
+        const dotOpacity = scrollX.interpolate({
+          inputRange,
+          outputRange: [0.3, 1, 0.3],
+          extrapolate: 'clamp',
+        });
+
+        return (
+          <Animated.View
+            key={index}
+            style={[
+              styles.dot,
+              { width: dotWidth, opacity: dotOpacity },
+            ]}
+          />
+        );
+      })}
+    </View>
+  );
+}
+
+export default function Onboarding() {
+  const router = useRouter();
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const scrollX = useRef(new Animated.Value(0)).current;
+  const flatListRef = useRef<FlatList>(null);
+
+  const handleNext = () => {
+    if (currentIndex < SLIDES.length - 1) {
+      flatListRef.current?.scrollToIndex({ index: currentIndex + 1 });
+    } else {
+      completeOnboarding();
+    }
+  };
+
+  const handleSkip = () => {
+    completeOnboarding();
+  };
+
+  const completeOnboarding = async () => {
+    await AsyncStorage.setItem("@onboarding_complete", "true");
+    router.replace("/user-info");
+  };
+
+  const onViewableItemsChanged = useRef(({ viewableItems }: any) => {
+    if (viewableItems.length > 0) {
+      setCurrentIndex(viewableItems[0].index);
+    }
+  }).current;
+
+  const viewabilityConfig = useRef({ viewAreaCoveragePercentThreshold: 50 }).current;
+
+  const currentSlide = SLIDES[currentIndex];
+  const isLastSlide = currentIndex === SLIDES.length - 1;
+
+  return (
+    <LinearGradient
+      colors={currentSlide.gradient}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 1, y: 1 }}
+      style={styles.container}
+    >
+      <SafeAreaView style={styles.safe}>
+        {/* Header */}
+        <View style={styles.header}>
+          <View style={styles.logoContainer}>
+            <Ionicons name="sparkles" size={24} color={colors.neutral[0]} />
+            <Text style={styles.logoText}>SkinGlow AI</Text>
           </View>
+          {!isLastSlide && (
+            <Pressable style={styles.skipButton} onPress={handleSkip}>
+              <Text style={styles.skipText}>Skip</Text>
+            </Pressable>
+          )}
         </View>
 
-        {/* Content */}
-        <View style={styles.content}>
-          <Text style={styles.title}>{slide.title}</Text>
-          <Text style={styles.description}>{slide.description}</Text>
-        </View>
+        {/* Slides */}
+        <Animated.FlatList
+          ref={flatListRef}
+          data={SLIDES}
+          keyExtractor={(item) => item.id}
+          horizontal
+          pagingEnabled
+          showsHorizontalScrollIndicator={false}
+          onScroll={Animated.event(
+            [{ nativeEvent: { contentOffset: { x: scrollX } } }],
+            { useNativeDriver: false }
+          )}
+          onViewableItemsChanged={onViewableItemsChanged}
+          viewabilityConfig={viewabilityConfig}
+          renderItem={({ item, index }) => (
+            <Slide item={item} index={index} scrollX={scrollX} />
+          )}
+        />
 
-        {/* Pagination Dots */}
-        <View style={styles.pagination}>
-          {ONBOARDING_SLIDES.map((_, index) => (
-            <View
-              key={index}
-              style={[
-                styles.dot,
-                index === currentSlide && styles.activeDot,
-              ]}
+        {/* Bottom Section */}
+        <View style={styles.bottomSection}>
+          <Pagination scrollX={scrollX} data={SLIDES} />
+
+          {/* Action Button */}
+          <Pressable
+            style={({ pressed }) => [
+              styles.actionButton,
+              pressed && { opacity: 0.9, transform: [{ scale: 0.98 }] },
+            ]}
+            onPress={handleNext}
+          >
+            <Text style={styles.actionButtonText}>
+              {isLastSlide ? "Get Started" : "Next"}
+            </Text>
+            <Ionicons
+              name={isLastSlide ? "arrow-forward" : "chevron-forward"}
+              size={20}
+              color={currentSlide.iconBg}
             />
-          ))}
-        </View>
+          </Pressable>
 
-        {/* Next Button */}
-        <Pressable style={styles.nextButton} onPress={handleNext}>
-          <Text style={styles.nextText}>
-            {currentSlide < ONBOARDING_SLIDES.length - 1 ? "Next" : "Get Started"}
+          {/* Progress indicator text */}
+          <Text style={styles.progressText}>
+            {currentIndex + 1} of {SLIDES.length}
           </Text>
-          <Ionicons name="arrow-forward" size={20} color="#4F46E5" />
-        </Pressable>
-      </LinearGradient>
-    </SafeAreaView>
+        </View>
+      </SafeAreaView>
+    </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
-  gradient: {
+  container: {
     flex: 1,
-    padding: 20,
+  },
+  safe: {
+    flex: 1,
+  },
+
+  // Header
+  header: {
+    flexDirection: "row",
     justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: spacing[5],
+    paddingVertical: spacing[4],
+  },
+  logoContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing[2],
+  },
+  logoText: {
+    ...textStyles.h4,
+    color: colors.neutral[0],
   },
   skipButton: {
-    alignSelf: "flex-end",
-    padding: 12,
+    paddingHorizontal: spacing[4],
+    paddingVertical: spacing[2],
+    backgroundColor: "rgba(255,255,255,0.2)",
+    borderRadius: radius.full,
   },
   skipText: {
-    color: "#fff",
-    fontSize: 16,
-    fontWeight: "600",
+    ...textStyles.captionMedium,
+    color: colors.neutral[0],
   },
-  iconContainer: {
+
+  // Slide
+  slide: {
+    width,
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
+    paddingHorizontal: spacing[8],
+  },
+  slideContent: {
+    alignItems: "center",
+    width: "100%",
   },
   iconCircle: {
-    width: 160,
-    height: 160,
-    borderRadius: 80,
-    backgroundColor: "rgba(255,255,255,0.2)",
-    justifyContent: "center",
+    width: 120,
+    height: 120,
+    borderRadius: 60,
     alignItems: "center",
+    justifyContent: "center",
+    marginBottom: spacing[6],
+    ...shadows.lg,
   },
-  content: {
-    marginBottom: 40,
+  subtitleBadge: {
+    paddingHorizontal: spacing[4],
+    paddingVertical: spacing[2],
+    backgroundColor: "rgba(255,255,255,0.2)",
+    borderRadius: radius.full,
+    marginBottom: spacing[4],
   },
-  title: {
+  subtitleText: {
+    ...textStyles.captionMedium,
+    color: colors.neutral[0],
+    textTransform: "uppercase",
+    letterSpacing: 1,
+  },
+  slideTitle: {
     fontSize: 32,
-    fontWeight: "800",
-    color: "#fff",
+    fontFamily: "Inter_700Bold",
+    color: colors.neutral[0],
     textAlign: "center",
-    marginBottom: 16,
+    marginBottom: spacing[4],
   },
-  description: {
-    fontSize: 16,
+  slideDescription: {
+    ...textStyles.body,
     color: "rgba(255,255,255,0.9)",
     textAlign: "center",
     lineHeight: 24,
-    paddingHorizontal: 20,
+    maxWidth: 300,
   },
+
+  // Bottom Section
+  bottomSection: {
+    paddingHorizontal: spacing[8],
+    paddingBottom: spacing[8],
+    alignItems: "center",
+  },
+
+  // Pagination
   pagination: {
     flexDirection: "row",
-    justifyContent: "center",
-    gap: 8,
-    marginBottom: 24,
+    alignItems: "center",
+    gap: spacing[2],
+    marginBottom: spacing[6],
   },
   dot: {
-    width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: "rgba(255,255,255,0.4)",
+    backgroundColor: colors.neutral[0],
   },
-  activeDot: {
-    width: 24,
-    backgroundColor: "#fff",
-  },
-  nextButton: {
+
+  // Action Button
+  actionButton: {
     flexDirection: "row",
-    backgroundColor: "#fff",
-    padding: 18,
-    borderRadius: 16,
     alignItems: "center",
     justifyContent: "center",
-    gap: 10,
+    gap: spacing[2],
+    backgroundColor: colors.neutral[0],
+    paddingVertical: spacing[4],
+    paddingHorizontal: spacing[8],
+    borderRadius: radius.full,
+    width: "100%",
+    marginBottom: spacing[4],
+    ...shadows.md,
   },
-  nextText: {
-    fontSize: 17,
-    fontWeight: "700",
-    color: "#4F46E5",
+  actionButtonText: {
+    ...textStyles.button,
+    color: colors.text.primary,
+  },
+
+  // Progress text
+  progressText: {
+    ...textStyles.caption,
+    color: "rgba(255,255,255,0.6)",
   },
 });

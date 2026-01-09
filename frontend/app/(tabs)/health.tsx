@@ -1,420 +1,639 @@
-import { ScrollView, Text, View, StyleSheet } from "react-native";
+/**
+ * Health Screen - Redesigned with Lemenode Design System
+ * Skincare routines with checkable habits and progress tracking
+ */
+
+import { ScrollView, Text, View, StyleSheet, Pressable, Animated } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import { useAnalysis } from "../../context/AnalysisContext";
 import { Ionicons } from "@expo/vector-icons";
+import { useState, useRef, useEffect } from "react";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import {
+  colors,
+  textStyles,
+  spacing,
+  layout,
+  radius,
+  shadows,
+} from "../../theme";
+
+// Checkable habit component with animation
+interface HabitCardProps {
+  item: string;
+  index: number;
+  isChecked: boolean;
+  onToggle: () => void;
+}
+
+function HabitCard({ item, index, isChecked, onToggle }: HabitCardProps) {
+  const scaleAnim = useRef(new Animated.Value(1)).current;
+  const checkAnim = useRef(new Animated.Value(isChecked ? 1 : 0)).current;
+
+  useEffect(() => {
+    Animated.timing(checkAnim, {
+      toValue: isChecked ? 1 : 0,
+      duration: 200,
+      useNativeDriver: false,
+    }).start();
+  }, [isChecked]);
+
+  const handlePress = () => {
+    Animated.sequence([
+      Animated.timing(scaleAnim, {
+        toValue: 0.97,
+        duration: 100,
+        useNativeDriver: true,
+      }),
+      Animated.timing(scaleAnim, {
+        toValue: 1,
+        duration: 100,
+        useNativeDriver: true,
+      }),
+    ]).start();
+    onToggle();
+  };
+
+  const checkboxBg = checkAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [colors.neutral[200], colors.accent[500]],
+  });
+
+  return (
+    <Pressable onPress={handlePress}>
+      <Animated.View
+        style={[
+          styles.habitCard,
+          { transform: [{ scale: scaleAnim }] },
+          isChecked && styles.habitCardChecked,
+        ]}
+      >
+        <View style={styles.habitNumber}>
+          <Text style={styles.habitNumberText}>{index + 1}</Text>
+        </View>
+        <Text style={[styles.habitText, isChecked && styles.habitTextChecked]}>
+          {item}
+        </Text>
+        <Animated.View style={[styles.checkbox, { backgroundColor: checkboxBg }]}>
+          {isChecked && (
+            <Ionicons name="checkmark" size={16} color={colors.neutral[0]} />
+          )}
+        </Animated.View>
+      </Animated.View>
+    </Pressable>
+  );
+}
+
+// Routine card with time-based styling
+interface RoutineCardProps {
+  item: string;
+  index: number;
+}
+
+function RoutineCard({ item, index }: RoutineCardProps) {
+  const isAM = item.toLowerCase().includes("morning") || item.toLowerCase().includes("am");
+  const isPM = item.toLowerCase().includes("evening") || item.toLowerCase().includes("pm") || item.toLowerCase().includes("night");
+  const isWeekly = item.toLowerCase().includes("week");
+
+  let gradientColors: readonly [string, string] = colors.gradients.primary;
+  let icon: string = "calendar-outline";
+  let label = "Daily";
+
+  if (isAM) {
+    gradientColors = ["#FBBF24", "#F59E0B"];
+    icon = "sunny";
+    label = "Morning";
+  } else if (isPM) {
+    gradientColors = ["#8B5CF6", "#7C3AED"];
+    icon = "moon";
+    label = "Evening";
+  } else if (isWeekly) {
+    gradientColors = colors.gradients.food;
+    icon = "calendar";
+    label = "Weekly";
+  }
+
+  return (
+    <View style={styles.routineCard}>
+      <LinearGradient
+        colors={gradientColors}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 0 }}
+        style={styles.routineGradient}
+      >
+        <Ionicons name={icon as any} size={22} color={colors.neutral[0]} />
+      </LinearGradient>
+      <View style={styles.routineContent}>
+        <Text style={styles.routineLabel}>{label}</Text>
+        <Text style={styles.routineText}>{item}</Text>
+      </View>
+    </View>
+  );
+}
+
+// Progress ring component
+function ProgressRing({ progress, label, color }: { progress: number; label: string; color: string }) {
+  return (
+    <View style={styles.progressRing}>
+      <View style={[styles.progressCircle, { borderColor: color }]}>
+        <Text style={[styles.progressNumber, { color }]}>{progress}%</Text>
+      </View>
+      <Text style={styles.progressLabel}>{label}</Text>
+    </View>
+  );
+}
+
+// Empty state component
+function EmptyState({ icon, message }: { icon: string; message: string }) {
+  return (
+    <View style={styles.emptyState}>
+      <View style={styles.emptyIcon}>
+        <Ionicons name={icon as any} size={40} color={colors.neutral[300]} />
+      </View>
+      <Text style={styles.emptyText}>{message}</Text>
+      <Text style={styles.emptyHint}>Complete your skin analysis to get a personalized routine</Text>
+    </View>
+  );
+}
 
 export default function Health() {
   const { analysis } = useAnalysis();
+  const [checkedHabits, setCheckedHabits] = useState<Record<number, boolean>>({});
 
-  const dailyHabits = analysis?.health?.daily_habits ?? [];
-  const routine = analysis?.health?.routine ?? [];
+  const dailyHabits: string[] = analysis?.health?.daily_habits ?? [];
+  const routine: string[] = analysis?.health?.routine ?? [];
+  const hasData = dailyHabits.length > 0 || routine.length > 0;
+
+  // Load checked state from storage
+  useEffect(() => {
+    const loadChecked = async () => {
+      try {
+        const stored = await AsyncStorage.getItem("@checked_habits");
+        if (stored) {
+          setCheckedHabits(JSON.parse(stored));
+        }
+      } catch (e) {
+        console.log("Failed to load habits", e);
+      }
+    };
+    loadChecked();
+  }, []);
+
+  // Save checked state
+  const toggleHabit = async (index: number) => {
+    const newChecked = {
+      ...checkedHabits,
+      [index]: !checkedHabits[index],
+    };
+    setCheckedHabits(newChecked);
+    try {
+      await AsyncStorage.setItem("@checked_habits", JSON.stringify(newChecked));
+    } catch (e) {
+      console.log("Failed to save habits", e);
+    }
+  };
+
+  // Calculate progress
+  const checkedCount = Object.values(checkedHabits).filter(Boolean).length;
+  const totalHabits = dailyHabits.length;
+  const progressPercent = totalHabits > 0 ? Math.round((checkedCount / totalHabits) * 100) : 0;
 
   return (
     <SafeAreaView style={styles.safe} edges={["top"]}>
-      <ScrollView 
+      <ScrollView
         contentContainerStyle={styles.container}
         showsVerticalScrollIndicator={false}
       >
-        {/* Header with Gradient */}
+        {/* Compact Header */}
         <LinearGradient
-          colors={["#EF4444", "#DC2626"]}
+          colors={colors.gradients.health}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={styles.header}
         >
-          <View style={styles.headerIcon}>
-            <Ionicons name="heart" size={32} color="#fff" />
-          </View>
-          <Text style={styles.headerTitle}>Health & Skincare</Text>
-          <Text style={styles.headerSubtitle}>
-            Your personalized routine for radiant skin
-          </Text>
-        </LinearGradient>
-
-        {/* Daily Habits Section */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <View style={styles.iconBadge}>
-              <Ionicons name="sunny" size={24} color="#F59E0B" />
+          <View style={styles.headerContent}>
+            <View style={styles.headerIcon}>
+              <Ionicons name="heart" size={24} color={colors.neutral[0]} />
             </View>
-            <View style={styles.sectionHeaderText}>
-              <Text style={styles.sectionTitle}>Daily Habits</Text>
-              <Text style={styles.sectionSubtitle}>
-                Small changes that make a big difference
+            <View style={styles.headerText}>
+              <Text style={styles.headerTitle}>Health & Skincare</Text>
+              <Text style={styles.headerSubtitle}>
+                Your personalized routine
               </Text>
             </View>
           </View>
+        </LinearGradient>
 
-          {dailyHabits.length > 0 ? (
-            dailyHabits.map((item: string, i: number) => (
-              <View key={i} style={styles.habitCard}>
-                <View style={styles.habitNumber}>
-                  <Text style={styles.habitNumberText}>{i + 1}</Text>
-                </View>
-                <View style={styles.habitContent}>
-                  <Text style={styles.habitText}>{item}</Text>
-                  <View style={styles.habitCheckbox}>
-                    <Ionicons name="checkmark-circle-outline" size={24} color="#10B981" />
+        {!hasData ? (
+          <View style={styles.emptyContainer}>
+            <EmptyState
+              icon="fitness-outline"
+              message="No health data yet"
+            />
+          </View>
+        ) : (
+          <>
+            {/* Progress Section */}
+            {dailyHabits.length > 0 && (
+              <View style={styles.progressSection}>
+                <View style={styles.progressCard}>
+                  <View style={styles.progressHeader}>
+                    <Ionicons name="trending-up" size={20} color={colors.accent[600]} />
+                    <Text style={styles.progressTitle}>Today's Progress</Text>
+                  </View>
+                  <View style={styles.progressStats}>
+                    <View style={styles.progressMain}>
+                      <Text style={styles.progressBig}>{checkedCount}</Text>
+                      <Text style={styles.progressOf}>of {totalHabits}</Text>
+                    </View>
+                    <View style={styles.progressBar}>
+                      <View
+                        style={[
+                          styles.progressFill,
+                          { width: `${progressPercent}%` },
+                        ]}
+                      />
+                    </View>
+                    <Text style={styles.progressPercent}>{progressPercent}% complete</Text>
                   </View>
                 </View>
               </View>
-            ))
-          ) : (
-            <View style={styles.emptyCard}>
-              <Ionicons name="time-outline" size={48} color="#D1D5DB" />
-              <Text style={styles.emptyText}>
-                Complete your analysis for personalized daily habits
-              </Text>
-            </View>
-          )}
-        </View>
+            )}
 
-        {/* Routine Section */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <View style={[styles.iconBadge, styles.iconBadgePurple]}>
-              <Ionicons name="sparkles" size={24} color="#8B5CF6" />
-            </View>
-            <View style={styles.sectionHeaderText}>
-              <Text style={styles.sectionTitle}>Skincare Routine</Text>
-              <Text style={styles.sectionSubtitle}>
-                Follow consistently for best results
-              </Text>
-            </View>
-          </View>
-
-          {routine.length > 0 ? (
-            <View style={styles.routineContainer}>
-              {routine.map((item: string, i: number) => {
-                const isAM = item.toLowerCase().includes("morning") || item.toLowerCase().includes("am");
-                const isPM = item.toLowerCase().includes("evening") || item.toLowerCase().includes("pm") || item.toLowerCase().includes("night");
-                const isWeekly = item.toLowerCase().includes("week");
-                const isMonthly = item.toLowerCase().includes("month");
-
-                return (
-                  <View key={i} style={styles.routineCard}>
-                    <LinearGradient
-                      colors={
-                        isAM ? ["#FBBF24", "#F59E0B"] :
-                        isPM ? ["#8B5CF6", "#7C3AED"] :
-                        isWeekly ? ["#10B981", "#059669"] :
-                        ["#3B82F6", "#2563EB"]
-                      }
-                      start={{ x: 0, y: 0 }}
-                      end={{ x: 1, y: 0 }}
-                      style={styles.routineGradient}
-                    >
-                      <Ionicons 
-                        name={
-                          isAM ? "sunny" :
-                          isPM ? "moon" :
-                          isWeekly ? "calendar" :
-                          "calendar-outline"
-                        }
-                        size={24}
-                        color="#fff"
-                      />
-                    </LinearGradient>
-                    <View style={styles.routineContent}>
-                      <Text style={styles.routineLabel}>
-                        {isAM ? "Morning" :
-                         isPM ? "Evening" :
-                         isWeekly ? "Weekly" :
-                         isMonthly ? "Monthly" : "Routine"}
-                      </Text>
-                      <Text style={styles.routineText}>{item}</Text>
-                    </View>
+            {/* Daily Habits Section */}
+            {dailyHabits.length > 0 && (
+              <View style={styles.section}>
+                <View style={styles.sectionHeader}>
+                  <View style={[styles.sectionIcon, styles.sectionIconAmber]}>
+                    <Ionicons name="sunny" size={20} color={colors.warning} />
                   </View>
-                );
-              })}
-            </View>
-          ) : (
-            <View style={styles.emptyCard}>
-              <Ionicons name="water-outline" size={48} color="#D1D5DB" />
-              <Text style={styles.emptyText}>
-                Get your personalized skincare routine
-              </Text>
-            </View>
-          )}
-        </View>
+                  <View>
+                    <Text style={styles.sectionTitle}>Daily Habits</Text>
+                    <Text style={styles.sectionSubtitle}>
+                      Tap to mark as complete
+                    </Text>
+                  </View>
+                </View>
+
+                <View style={styles.habitList}>
+                  {dailyHabits.map((item, i) => (
+                    <HabitCard
+                      key={i}
+                      item={item}
+                      index={i}
+                      isChecked={!!checkedHabits[i]}
+                      onToggle={() => toggleHabit(i)}
+                    />
+                  ))}
+                </View>
+              </View>
+            )}
+
+            {/* Skincare Routine Section */}
+            {routine.length > 0 && (
+              <View style={styles.section}>
+                <View style={styles.sectionHeader}>
+                  <View style={[styles.sectionIcon, styles.sectionIconPurple]}>
+                    <Ionicons name="sparkles" size={20} color="#8B5CF6" />
+                  </View>
+                  <View>
+                    <Text style={styles.sectionTitle}>Skincare Routine</Text>
+                    <Text style={styles.sectionSubtitle}>
+                      Follow consistently for best results
+                    </Text>
+                  </View>
+                </View>
+
+                <View style={styles.routineList}>
+                  {routine.map((item, i) => (
+                    <RoutineCard key={i} item={item} index={i} />
+                  ))}
+                </View>
+              </View>
+            )}
+          </>
+        )}
 
         {/* Info Card */}
         <View style={styles.infoCard}>
-          <View style={styles.infoIconContainer}>
-            <Ionicons name="bulb" size={24} color="#F59E0B" />
+          <View style={styles.infoIcon}>
+            <Ionicons name="bulb" size={20} color={colors.warning} />
           </View>
-          <View style={styles.infoTextContainer}>
-            <Text style={styles.infoTitle}>Why consistency matters</Text>
+          <View style={styles.infoContent}>
+            <Text style={styles.infoTitle}>Why Consistency Matters</Text>
             <Text style={styles.infoText}>
-              Skin cells regenerate every 28 days. Following your routine for 2-4 weeks will show visible improvements in texture, tone, and clarity.
+              Skin cells regenerate every 28 days. Follow your routine for 2-4 weeks to see visible improvements.
             </Text>
           </View>
         </View>
 
-        {/* Progress Tracker */}
-        <View style={styles.progressSection}>
-          <Text style={styles.progressTitle}>Track Your Progress</Text>
-          <View style={styles.progressCards}>
-            <View style={styles.progressCard}>
-              <LinearGradient
-                colors={["#3B82F6", "#2563EB"]}
-                style={styles.progressGradient}
-              >
-                <Ionicons name="calendar" size={28} color="#fff" />
-                <Text style={styles.progressNumber}>7</Text>
-                <Text style={styles.progressLabel}>Days Streak</Text>
-              </LinearGradient>
-            </View>
-            <View style={styles.progressCard}>
-              <LinearGradient
-                colors={["#10B981", "#059669"]}
-                style={styles.progressGradient}
-              >
-                <Ionicons name="checkmark-done" size={28} color="#fff" />
-                <Text style={styles.progressNumber}>85%</Text>
-                <Text style={styles.progressLabel}>Completed</Text>
-              </LinearGradient>
-            </View>
-          </View>
-        </View>
-
-        <View style={{ height: 40 }} />
+        <View style={{ height: spacing[10] }} />
       </ScrollView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  safe: { 
-    flex: 1, 
-    backgroundColor: "#F9FAFB" 
+  safe: {
+    flex: 1,
+    backgroundColor: colors.background.primary,
   },
-  container: { 
-    paddingBottom: 20 
+  container: {
+    paddingBottom: spacing[5],
   },
+
+  // Header
   header: {
-    paddingHorizontal: 24,
-    paddingTop: 24,
-    paddingBottom: 32,
-    borderBottomLeftRadius: 32,
-    borderBottomRightRadius: 32,
+    paddingHorizontal: layout.screenPaddingHorizontal,
+    paddingVertical: spacing[5],
+    borderBottomLeftRadius: radius.xl,
+    borderBottomRightRadius: radius.xl,
+  },
+  headerContent: {
+    flexDirection: "row",
+    alignItems: "center",
   },
   headerIcon: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
+    width: 48,
+    height: 48,
+    borderRadius: radius.lg,
     backgroundColor: "rgba(255,255,255,0.2)",
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 16,
+    marginRight: spacing[4],
+  },
+  headerText: {
+    flex: 1,
   },
   headerTitle: {
-    fontSize: 32,
-    fontWeight: "800",
-    color: "#fff",
-    marginBottom: 8,
+    ...textStyles.h3,
+    color: colors.neutral[0],
+    marginBottom: spacing[0.5],
   },
   headerSubtitle: {
-    fontSize: 16,
+    ...textStyles.body,
     color: "rgba(255,255,255,0.9)",
-    fontWeight: "500",
   },
+
+  // Empty State
+  emptyContainer: {
+    padding: layout.screenPaddingHorizontal,
+    paddingTop: spacing[10],
+  },
+  emptyState: {
+    alignItems: "center",
+    padding: spacing[8],
+    backgroundColor: colors.neutral[0],
+    borderRadius: radius.xl,
+    ...shadows.sm,
+  },
+  emptyIcon: {
+    width: 80,
+    height: 80,
+    borderRadius: radius.full,
+    backgroundColor: colors.neutral[100],
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: spacing[4],
+  },
+  emptyText: {
+    ...textStyles.h4,
+    color: colors.text.secondary,
+    marginBottom: spacing[2],
+  },
+  emptyHint: {
+    ...textStyles.caption,
+    color: colors.text.tertiary,
+    textAlign: "center",
+  },
+
+  // Progress Section
+  progressSection: {
+    marginTop: spacing[5],
+    paddingHorizontal: layout.screenPaddingHorizontal,
+  },
+  progressCard: {
+    backgroundColor: colors.accent[50],
+    borderRadius: radius.xl,
+    padding: spacing[5],
+    borderWidth: 1,
+    borderColor: colors.accent[200],
+  },
+  progressHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing[2],
+    marginBottom: spacing[4],
+  },
+  progressTitle: {
+    ...textStyles.label,
+    color: colors.accent[700],
+  },
+  progressStats: {
+    alignItems: "center",
+  },
+  progressMain: {
+    flexDirection: "row",
+    alignItems: "baseline",
+    marginBottom: spacing[3],
+  },
+  progressBig: {
+    fontSize: 48,
+    fontFamily: "Inter_900Black",
+    color: colors.accent[600],
+  },
+  progressOf: {
+    ...textStyles.body,
+    color: colors.accent[500],
+    marginLeft: spacing[2],
+  },
+  progressBar: {
+    width: "100%",
+    height: 8,
+    backgroundColor: colors.accent[200],
+    borderRadius: radius.full,
+    overflow: "hidden",
+    marginBottom: spacing[2],
+  },
+  progressFill: {
+    height: "100%",
+    backgroundColor: colors.accent[500],
+    borderRadius: radius.full,
+  },
+  progressPercent: {
+    ...textStyles.caption,
+    color: colors.accent[600],
+  },
+  progressRing: {
+    alignItems: "center",
+  },
+  progressCircle: {
+    width: 80,
+    height: 80,
+    borderRadius: radius.full,
+    borderWidth: 6,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: colors.neutral[0],
+    marginBottom: spacing[2],
+  },
+  progressNumber: {
+    fontSize: 24,
+    fontFamily: "Inter_700Bold",
+  },
+  progressLabel: {
+    ...textStyles.caption,
+    color: colors.text.tertiary,
+  },
+
+  // Section
   section: {
-    marginTop: 24,
-    paddingHorizontal: 20,
+    marginTop: spacing[6],
+    paddingHorizontal: layout.screenPaddingHorizontal,
   },
   sectionHeader: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 16,
+    marginBottom: spacing[4],
   },
-  iconBadge: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: "#FEF3C7",
+  sectionIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: radius.md,
     alignItems: "center",
     justifyContent: "center",
-    marginRight: 12,
+    marginRight: spacing[3],
   },
-  iconBadgePurple: {
+  sectionIconAmber: {
+    backgroundColor: colors.warningLight,
+  },
+  sectionIconPurple: {
     backgroundColor: "#EDE9FE",
   },
-  sectionHeaderText: {
-    flex: 1,
-  },
   sectionTitle: {
-    fontSize: 20,
-    fontWeight: "700",
-    color: "#111827",
-    marginBottom: 2,
+    ...textStyles.h4,
+    color: colors.text.primary,
   },
   sectionSubtitle: {
-    fontSize: 13,
-    color: "#6B7280",
+    ...textStyles.caption,
+    color: colors.text.tertiary,
+  },
+
+  // Habit List
+  habitList: {
+    gap: spacing[3],
   },
   habitCard: {
     flexDirection: "row",
-    backgroundColor: "#fff",
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 12,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
+    alignItems: "center",
+    backgroundColor: colors.neutral[0],
+    borderRadius: radius.lg,
+    padding: spacing[4],
+    ...shadows.sm,
     borderWidth: 1,
-    borderColor: "#E5E7EB",
+    borderColor: colors.border.light,
+  },
+  habitCardChecked: {
+    backgroundColor: colors.accent[50],
+    borderColor: colors.accent[200],
   },
   habitNumber: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: "#DBEAFE",
+    width: 28,
+    height: 28,
+    borderRadius: radius.md,
+    backgroundColor: colors.primary[100],
     alignItems: "center",
     justifyContent: "center",
-    marginRight: 12,
+    marginRight: spacing[3],
   },
   habitNumberText: {
-    fontSize: 14,
-    fontWeight: "700",
-    color: "#3B82F6",
-  },
-  habitContent: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
+    ...textStyles.captionMedium,
+    color: colors.primary[600],
   },
   habitText: {
+    ...textStyles.body,
+    color: colors.text.primary,
     flex: 1,
-    fontSize: 15,
-    color: "#374151",
-    lineHeight: 22,
   },
-  habitCheckbox: {
-    marginLeft: 8,
+  habitTextChecked: {
+    color: colors.text.secondary,
   },
-  routineContainer: {
-    gap: 12,
+  checkbox: {
+    width: 28,
+    height: 28,
+    borderRadius: radius.md,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  // Routine List
+  routineList: {
+    gap: spacing[3],
   },
   routineCard: {
     flexDirection: "row",
-    backgroundColor: "#fff",
-    borderRadius: 16,
-    padding: 16,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
+    alignItems: "flex-start",
+    backgroundColor: colors.neutral[0],
+    borderRadius: radius.lg,
+    padding: spacing[4],
+    ...shadows.sm,
     borderWidth: 1,
-    borderColor: "#E5E7EB",
+    borderColor: colors.border.light,
   },
   routineGradient: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: 44,
+    height: 44,
+    borderRadius: radius.lg,
     alignItems: "center",
     justifyContent: "center",
-    marginRight: 12,
+    marginRight: spacing[3],
   },
   routineContent: {
     flex: 1,
   },
   routineLabel: {
-    fontSize: 12,
-    fontWeight: "700",
-    color: "#6B7280",
-    textTransform: "uppercase",
-    letterSpacing: 0.5,
-    marginBottom: 4,
+    ...textStyles.overline,
+    color: colors.text.tertiary,
+    marginBottom: spacing[1],
   },
   routineText: {
-    fontSize: 15,
-    color: "#374151",
+    ...textStyles.body,
+    color: colors.text.primary,
     lineHeight: 22,
   },
-  emptyCard: {
-    backgroundColor: "#fff",
-    borderRadius: 16,
-    padding: 40,
-    alignItems: "center",
-    borderWidth: 2,
-    borderColor: "#E5E7EB",
-    borderStyle: "dashed",
-  },
-  emptyText: {
-    fontSize: 14,
-    color: "#9CA3AF",
-    textAlign: "center",
-    marginTop: 12,
-  },
+
+  // Info Card
   infoCard: {
     flexDirection: "row",
-    backgroundColor: "#FFFBEB",
-    borderRadius: 16,
-    padding: 16,
-    marginHorizontal: 20,
-    marginTop: 24,
+    marginHorizontal: layout.screenPaddingHorizontal,
+    marginTop: spacing[6],
+    padding: spacing[4],
+    backgroundColor: colors.warningLight,
+    borderRadius: radius.lg,
     borderLeftWidth: 4,
-    borderLeftColor: "#F59E0B",
+    borderLeftColor: colors.warning,
   },
-  infoIconContainer: {
+  infoIcon: {
     width: 40,
     height: 40,
-    borderRadius: 20,
-    backgroundColor: "#FEF3C7",
+    borderRadius: radius.md,
+    backgroundColor: "rgba(245, 158, 11, 0.15)",
     alignItems: "center",
     justifyContent: "center",
+    marginRight: spacing[3],
   },
-  infoTextContainer: {
+  infoContent: {
     flex: 1,
-    marginLeft: 12,
   },
   infoTitle: {
-    fontSize: 15,
-    fontWeight: "700",
-    color: "#92400E",
-    marginBottom: 4,
+    ...textStyles.label,
+    color: colors.warningDark,
+    marginBottom: spacing[1],
   },
   infoText: {
-    fontSize: 13,
-    color: "#92400E",
-    lineHeight: 18,
-  },
-  progressSection: {
-    marginTop: 24,
-    paddingHorizontal: 20,
-  },
-  progressTitle: {
-    fontSize: 20,
-    fontWeight: "700",
-    color: "#111827",
-    marginBottom: 16,
-  },
-  progressCards: {
-    flexDirection: "row",
-    gap: 12,
-  },
-  progressCard: {
-    flex: 1,
-  },
-  progressGradient: {
-    borderRadius: 16,
-    padding: 20,
-    alignItems: "center",
-  },
-  progressNumber: {
-    fontSize: 32,
-    fontWeight: "800",
-    color: "#fff",
-    marginVertical: 8,
-  },
-  progressLabel: {
-    fontSize: 13,
-    color: "rgba(255,255,255,0.9)",
-    fontWeight: "600",
+    ...textStyles.caption,
+    color: colors.warningDark,
+    lineHeight: 20,
   },
 });

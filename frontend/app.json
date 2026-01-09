@@ -3,20 +3,18 @@
     "name": "SkinGlow AI",
     "slug": "skinglow-ai",
     "scheme": "skinglowai",
-    "version": "1.0.0",
+    "version": "2.0.0",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
-
     "icon": "./assets/adaptive-icon.png",
-
     "splash": {
       "image": "./assets/splash.png",
       "resizeMode": "contain",
       "backgroundColor": "#4F46E5"
     },
-
-    "assetBundlePatterns": ["**/*"],
-
+    "assetBundlePatterns": [
+      "**/*"
+    ],
     "android": {
       "package": "com.lemenode.skinglow",
       "adaptiveIcon": {
@@ -29,11 +27,9 @@
         "android.permission.RECORD_AUDIO"
       ]
     },
-
     "ios": {
       "supportsTablet": true
     },
-
     "plugins": [
       "expo-router",
       [
@@ -47,9 +43,9 @@
         {
           "photosPermission": "Allow SkinGlow AI to access your photos for skin analysis."
         }
-      ]
+      ],
+      "expo-font"
     ],
-
     "extra": {
       "router": {
         "origin": false
@@ -58,11 +54,9 @@
         "projectId": "f614f02e-b4a5-4f79-9747-87ce5e4d8390"
       }
     },
-
     "runtimeVersion": {
       "policy": "appVersion"
     },
-
     "updates": {
       "url": "https://u.expo.dev/f614f02e-b4a5-4f79-9747-87ce5e4d8390"
     }

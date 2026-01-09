@@ -1,8 +1,21 @@
 import { Stack, Redirect, usePathname } from "expo-router";
 import { AnalysisProvider, useAnalysis } from "../context/AnalysisContext";
 import { View, ActivityIndicator } from "react-native";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import * as SplashScreen from "expo-splash-screen";
+import {
+  useFonts,
+  Inter_400Regular,
+  Inter_500Medium,
+  Inter_600SemiBold,
+  Inter_700Bold,
+  Inter_900Black,
+} from "@expo-google-fonts/inter";
+import { colors } from "../theme";
+
+// Prevent splash screen from auto-hiding
+SplashScreen.preventAutoHideAsync();
 
 function RootStack() {
   const { loading, user } = useAnalysis();
@@ -55,9 +68,29 @@ function RootStack() {
 }
 
 export default function RootLayout() {
+  const [fontsLoaded] = useFonts({
+    Inter_400Regular,
+    Inter_500Medium,
+    Inter_600SemiBold,
+    Inter_700Bold,
+    Inter_900Black,
+  });
+
+  const onLayoutRootView = useCallback(async () => {
+    if (fontsLoaded) {
+      await SplashScreen.hideAsync();
+    }
+  }, [fontsLoaded]);
+
+  if (!fontsLoaded) {
+    return null;
+  }
+
   return (
-    <AnalysisProvider>
-      <RootStack />
-    </AnalysisProvider>
+    <View style={{ flex: 1 }} onLayout={onLayoutRootView}>
+      <AnalysisProvider>
+        <RootStack />
+      </AnalysisProvider>
+    </View>
   );
 }
