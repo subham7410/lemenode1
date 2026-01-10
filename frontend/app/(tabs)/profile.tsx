@@ -19,6 +19,9 @@ import {
   getScoreColor,
   getScoreLabel,
 } from "../../theme";
+import Constants from "expo-constants";
+
+const APP_VERSION = Constants.expoConfig?.version || "2.4.0";
 
 // Stat card component
 interface StatCardProps {
@@ -114,7 +117,14 @@ export default function Profile() {
     return { label: "Obese", color: colors.error };
   };
 
-  const score = analysis?.score ?? null;
+  // Helper to extract score (handles both old number format and new object format)
+  const getScoreValue = (scoreData: any): number | null => {
+    if (typeof scoreData === 'number') return scoreData;
+    if (typeof scoreData === 'object' && scoreData?.total) return scoreData.total;
+    return null;
+  };
+
+  const score = analysis ? getScoreValue(analysis.score) : null;
   const bmi = getBMI();
   const bmiCategory = bmi ? getBMICategory(parseFloat(bmi)) : null;
 
@@ -260,6 +270,30 @@ export default function Profile() {
           <Text style={styles.sectionTitle}>Settings</Text>
           <View style={styles.actionsCard}>
             <ActionRow
+              icon="analytics-outline"
+              iconColor={colors.accent[600]}
+              title="Progress Tracker"
+              subtitle="View your skin score history"
+              onPress={() => router.push("/progress-tracker")}
+            />
+            <View style={styles.actionDivider} />
+            <ActionRow
+              icon="trophy-outline"
+              iconColor="#FBBF24"
+              title="Achievements"
+              subtitle="Earn badges and track milestones"
+              onPress={() => router.push("/achievements")}
+            />
+            <View style={styles.actionDivider} />
+            <ActionRow
+              icon="notifications-outline"
+              iconColor="#8B5CF6"
+              title="Reminders"
+              subtitle="Set skincare routine reminders"
+              onPress={() => router.push("/reminders")}
+            />
+            <View style={styles.actionDivider} />
+            <ActionRow
               icon="create-outline"
               iconColor={colors.primary[600]}
               title="Edit Profile"
@@ -268,11 +302,11 @@ export default function Profile() {
             />
             <View style={styles.actionDivider} />
             <ActionRow
-              icon="help-circle-outline"
+              icon="chatbubble-ellipses-outline"
               iconColor={colors.accent[600]}
-              title="Help & Support"
-              subtitle="FAQs and contact info"
-              onPress={() => { }}
+              title="Send Feedback"
+              subtitle="Report bugs or suggest features"
+              onPress={() => router.push("/feedback")}
             />
             <View style={styles.actionDivider} />
             <ActionRow
@@ -280,7 +314,7 @@ export default function Profile() {
               iconColor="#8B5CF6"
               title="Privacy Policy"
               subtitle="How we protect your data"
-              onPress={() => { }}
+              onPress={() => router.push("/privacy-policy")}
             />
             <View style={styles.actionDivider} />
             <ActionRow
@@ -299,7 +333,13 @@ export default function Profile() {
             <Ionicons name="sparkles" size={24} color={colors.primary[500]} />
           </View>
           <Text style={styles.appName}>Lemenode</Text>
-          <Text style={styles.appVersion}>Version 1.0.0</Text>
+          <View style={styles.versionRow}>
+            <Text style={styles.appVersion}>Version {APP_VERSION}</Text>
+            <View style={styles.updateBadge}>
+              <Ionicons name="checkmark-circle" size={14} color={colors.accent[500]} />
+              <Text style={styles.updateBadgeText}>Up to date</Text>
+            </View>
+          </View>
           <Text style={styles.appTagline}>Made with ❤️ for healthy skin</Text>
         </View>
 
@@ -624,10 +664,29 @@ const styles = StyleSheet.create({
   appVersion: {
     ...textStyles.caption,
     color: colors.text.tertiary,
-    marginBottom: spacing[2],
   },
   appTagline: {
     ...textStyles.caption,
     color: colors.text.disabled,
+  },
+  versionRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing[2],
+    marginBottom: spacing[2],
+  },
+  updateBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing[1],
+    backgroundColor: colors.accent[50],
+    paddingHorizontal: spacing[2],
+    paddingVertical: spacing[1],
+    borderRadius: radius.full,
+  },
+  updateBadgeText: {
+    ...textStyles.caption,
+    color: colors.accent[600],
+    fontSize: 10,
   },
 });

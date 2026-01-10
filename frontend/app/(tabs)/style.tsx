@@ -93,19 +93,98 @@ export default function Style() {
   const accessories: string[] = analysis?.style?.accessories ?? [];
   const hasData = clothing.length > 0 || accessories.length > 0;
 
-  // Sample color palettes based on skin tone
-  const recommendedColors = [
-    { color: "#10B981", name: "Emerald" },
-    { color: "#3B82F6", name: "Royal Blue" },
-    { color: "#8B5CF6", name: "Purple" },
-    { color: "#EC4899", name: "Pink" },
-    { color: "#F59E0B", name: "Gold" },
-  ];
+  // Get skin tone from analysis
+  const skinTone = analysis?.skin_tone?.toLowerCase() || "";
 
-  const avoidColors = [
-    { color: "#6B7280", name: "Gray" },
-    { color: "#78716C", name: "Stone" },
-  ];
+  // Dynamic color palettes based on skin tone
+  const getColorPalette = () => {
+    // Fair/Light skin tones
+    if (skinTone.includes("fair") || skinTone.includes("light") || skinTone.includes("pale")) {
+      return {
+        recommended: [
+          { color: "#E11D48", name: "Rose" },
+          { color: "#7C3AED", name: "Violet" },
+          { color: "#0EA5E9", name: "Sky Blue" },
+          { color: "#10B981", name: "Emerald" },
+          { color: "#EC4899", name: "Pink" },
+        ],
+        avoid: [
+          { color: "#FEF3C7", name: "Pale Yellow" },
+          { color: "#FED7AA", name: "Peach" },
+        ],
+      };
+    }
+
+    // Medium/Olive skin tones
+    if (skinTone.includes("medium") || skinTone.includes("olive") || skinTone.includes("wheat")) {
+      return {
+        recommended: [
+          { color: "#059669", name: "Jade" },
+          { color: "#7C3AED", name: "Purple" },
+          { color: "#DC2626", name: "Red" },
+          { color: "#0284C7", name: "Ocean" },
+          { color: "#F59E0B", name: "Amber" },
+        ],
+        avoid: [
+          { color: "#9CA3AF", name: "Gray" },
+          { color: "#D4D4D8", name: "Silver" },
+        ],
+      };
+    }
+
+    // Tan/Brown skin tones
+    if (skinTone.includes("tan") || skinTone.includes("brown") || skinTone.includes("caramel")) {
+      return {
+        recommended: [
+          { color: "#F97316", name: "Orange" },
+          { color: "#FBBF24", name: "Gold" },
+          { color: "#059669", name: "Teal" },
+          { color: "#E11D48", name: "Coral" },
+          { color: "#FFFFFF", name: "White" },
+        ],
+        avoid: [
+          { color: "#78716C", name: "Brown" },
+          { color: "#A8A29E", name: "Khaki" },
+        ],
+      };
+    }
+
+    // Deep/Dark skin tones
+    if (skinTone.includes("deep") || skinTone.includes("dark") || skinTone.includes("ebony")) {
+      return {
+        recommended: [
+          { color: "#FBBF24", name: "Gold" },
+          { color: "#F97316", name: "Tangerine" },
+          { color: "#EC4899", name: "Fuchsia" },
+          { color: "#22D3EE", name: "Cyan" },
+          { color: "#FFFFFF", name: "White" },
+        ],
+        avoid: [
+          { color: "#1F2937", name: "Black" },
+          { color: "#374151", name: "Charcoal" },
+        ],
+      };
+    }
+
+    // Default palette (if skin tone not detected)
+    return {
+      recommended: [
+        { color: "#10B981", name: "Emerald" },
+        { color: "#3B82F6", name: "Royal Blue" },
+        { color: "#8B5CF6", name: "Purple" },
+        { color: "#EC4899", name: "Pink" },
+        { color: "#F59E0B", name: "Gold" },
+      ],
+      avoid: [
+        { color: "#6B7280", name: "Gray" },
+        { color: "#78716C", name: "Stone" },
+      ],
+    };
+  };
+
+  const colorPalette = getColorPalette();
+  const recommendedColors = colorPalette.recommended;
+  const avoidColors = colorPalette.avoid;
 
   return (
     <SafeAreaView style={styles.safe} edges={["top"]}>
@@ -151,7 +230,7 @@ export default function Style() {
                 <View>
                   <Text style={styles.sectionTitle}>Your Color Palette</Text>
                   <Text style={styles.sectionSubtitle}>
-                    Based on your skin tone analysis
+                    {skinTone ? `For ${skinTone} skin tone` : "Based on your analysis"}
                   </Text>
                 </View>
               </View>

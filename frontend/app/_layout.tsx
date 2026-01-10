@@ -1,8 +1,9 @@
 import { Stack } from "expo-router";
 import { AnalysisProvider } from "../context/AnalysisContext";
-import { View } from "react-native";
+import { View, Text, StyleSheet } from "react-native";
 import { useEffect, useState } from "react";
 import * as Font from "expo-font";
+import * as Updates from "expo-updates";
 import {
   Inter_400Regular,
   Inter_500Medium,
@@ -13,6 +14,28 @@ import {
 
 export default function RootLayout() {
   const [fontsLoaded, setFontsLoaded] = useState(false);
+  const [isUpdating, setIsUpdating] = useState(false);
+
+  useEffect(() => {
+    // Check for updates on launch
+    async function checkForUpdates() {
+      if (__DEV__) return; // Skip in development
+
+      try {
+        const update = await Updates.checkForUpdateAsync();
+        if (update.isAvailable) {
+          setIsUpdating(true);
+          await Updates.fetchUpdateAsync();
+          await Updates.reloadAsync(); // Restart app with new update
+        }
+      } catch (e) {
+        // Update check failed, continue with current version
+        console.log("Update check failed:", e);
+      }
+    }
+
+    checkForUpdates();
+  }, []);
 
   useEffect(() => {
     // Load fonts in background - don't block rendering
@@ -31,6 +54,16 @@ export default function RootLayout() {
     return () => clearTimeout(timeout);
   }, []);
 
+  // Show updating screen if downloading update
+  if (isUpdating) {
+    return (
+      <View style={styles.updateContainer}>
+        <Text style={styles.updateText}>Updating app...</Text>
+        <Text style={styles.updateSubtext}>Please wait a moment</Text>
+      </View>
+    );
+  }
+
   // Always render - navigation logic is in index.tsx
   return (
     <View style={{ flex: 1, backgroundColor: "#FAFAFA" }}>
@@ -46,3 +79,22 @@ export default function RootLayout() {
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  updateContainer: {
+    flex: 1,
+    backgroundColor: "#4F46E5",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  updateText: {
+    fontSize: 20,
+    fontWeight: "600",
+    color: "#FFFFFF",
+    marginBottom: 8,
+  },
+  updateSubtext: {
+    fontSize: 14,
+    color: "rgba(255,255,255,0.8)",
+  },
+});

@@ -29,7 +29,7 @@ export type Analysis = {
   skin_type?: string;
   skin_tone?: string;
   overall_condition?: string;
-  score?: number;
+  score?: number | { total: number; label: string; breakdown?: any };
 
   visible_issues?: string[];
   positive_aspects?: string[];
@@ -53,6 +53,19 @@ export type Analysis = {
 };
 
 /* =========================
+   SCORE HISTORY TYPE
+========================= */
+
+export type ScoreHistoryEntry = {
+  id: string;
+  date: string; // ISO string
+  score: number;
+  skinType?: string;
+  skinTone?: string;
+  condition?: string;
+};
+
+/* =========================
    CONTEXT TYPE
 ========================= */
 
@@ -63,6 +76,11 @@ type AnalysisContextType = {
   analysis: Analysis | null;
   setAnalysis: (data: Analysis) => Promise<void>;
   clearAnalysis: () => Promise<void>;
+
+  // Score history for progress tracking
+  scoreHistory: ScoreHistoryEntry[];
+  addScoreToHistory: (score: number, analysis: Analysis) => Promise<void>;
+  clearHistory: () => Promise<void>;
 
   loading: boolean;
 };
@@ -81,6 +99,7 @@ const AnalysisContext = createContext<AnalysisContextType | undefined>(
 
 const USER_KEY = "@lemenode_user";
 const ANALYSIS_KEY = "@lemenode_analysis";
+const HISTORY_KEY = "@lemenode_score_history";
 
 /* =========================
    PROVIDER
@@ -97,6 +116,7 @@ export function AnalysisProvider({ children }: { children: ReactNode }) {
   });
 
   const [analysis, setAnalysisState] = useState<Analysis | null>(null);
+  const [scoreHistory, setScoreHistory] = useState<ScoreHistoryEntry[]>([]);
   const [loading, setLoading] = useState(true);
 
   /* 🔄 Load stored data */
@@ -105,9 +125,11 @@ export function AnalysisProvider({ children }: { children: ReactNode }) {
       try {
         const storedUser = await AsyncStorage.getItem(USER_KEY);
         const storedAnalysis = await AsyncStorage.getItem(ANALYSIS_KEY);
+        const storedHistory = await AsyncStorage.getItem(HISTORY_KEY);
 
         if (storedUser) setUserState(JSON.parse(storedUser));
         if (storedAnalysis) setAnalysisState(JSON.parse(storedAnalysis));
+        if (storedHistory) setScoreHistory(JSON.parse(storedHistory));
       } finally {
         setLoading(false);
       }
@@ -120,16 +142,50 @@ export function AnalysisProvider({ children }: { children: ReactNode }) {
     await AsyncStorage.setItem(USER_KEY, JSON.stringify(data));
   };
 
-  /* 💾 Save analysis */
+  /* 💾 Save analysis + auto-add to history */
   const setAnalysis = async (data: Analysis) => {
     setAnalysisState(data);
     await AsyncStorage.setItem(ANALYSIS_KEY, JSON.stringify(data));
+
+    // Extract score and add to history
+    let scoreValue: number | undefined;
+    if (typeof data.score === 'number') {
+      scoreValue = data.score;
+    } else if (data.score && typeof data.score === 'object' && data.score.total) {
+      scoreValue = data.score.total;
+    }
+
+    if (scoreValue) {
+      await addScoreToHistory(scoreValue, data);
+    }
+  };
+
+  /* 📊 Add score to history */
+  const addScoreToHistory = async (score: number, analysisData: Analysis) => {
+    const entry: ScoreHistoryEntry = {
+      id: Date.now().toString(),
+      date: new Date().toISOString(),
+      score,
+      skinType: analysisData.skin_type,
+      skinTone: analysisData.skin_tone,
+      condition: analysisData.overall_condition,
+    };
+
+    const newHistory = [...scoreHistory, entry].slice(-30); // Keep last 30 entries
+    setScoreHistory(newHistory);
+    await AsyncStorage.setItem(HISTORY_KEY, JSON.stringify(newHistory));
   };
 
   /* 🧹 Clear analysis only */
   const clearAnalysis = async () => {
     setAnalysisState(null);
     await AsyncStorage.removeItem(ANALYSIS_KEY);
+  };
+
+  /* 🧹 Clear history */
+  const clearHistory = async () => {
+    setScoreHistory([]);
+    await AsyncStorage.removeItem(HISTORY_KEY);
   };
 
   return (
@@ -140,6 +196,9 @@ export function AnalysisProvider({ children }: { children: ReactNode }) {
         analysis,
         setAnalysis,
         clearAnalysis,
+        scoreHistory,
+        addScoreToHistory,
+        clearHistory,
         loading,
       }}
     >
@@ -161,11 +220,3 @@ export function useAnalysis() {
   }
   return context;
 }
-/** history  */
-export type AnalysisHistory = {
-  id: string;
-  date: Date;
-  score: number;
-  skin_type: string;
-  thumbnail?: string;
-};

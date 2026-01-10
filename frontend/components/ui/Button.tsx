@@ -146,7 +146,7 @@ export function Button({
                 <Ionicons name={leftIcon} size={iconSize} color={getIconColor()} />
             ) : null}
 
-            <Text style={getTextStyle()}>{title}</Text>
+            <Text style={getTextStyle()} numberOfLines={1} adjustsFontSizeToFit>{title}</Text>
 
             {rightIcon && !loading && (
                 <Ionicons name={rightIcon} size={iconSize} color={getIconColor()} />

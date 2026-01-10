@@ -24,16 +24,19 @@ import {
 
 // Animated Score Circle
 function ScoreCircle({ score }: { score: number }) {
+  // Safety: ensure score is a valid number
+  const safeScore = isNaN(score) || score === null || score === undefined ? 70 : score;
+
   const animatedValue = useRef(new Animated.Value(0)).current;
-  const scoreColor = getScoreColor(score);
+  const scoreColor = getScoreColor(safeScore);
 
   useEffect(() => {
     Animated.timing(animatedValue, {
-      toValue: score,
+      toValue: safeScore,
       duration: 1500,
       useNativeDriver: false,
     }).start();
-  }, [score]);
+  }, [safeScore]);
 
   const displayScore = animatedValue.interpolate({
     inputRange: [0, 100],
@@ -49,7 +52,7 @@ function ScoreCircle({ score }: { score: number }) {
           style={styles.scoreInner}
         >
           <Animated.Text style={[styles.scoreNumber, { color: scoreColor }]}>
-            {Math.round(score)}
+            {Math.round(safeScore)}
           </Animated.Text>
           <Text style={styles.scoreMax}>/ 100</Text>
         </LinearGradient>
@@ -140,11 +143,26 @@ export default function Result() {
   const { analysis } = useAnalysis();
   const router = useRouter();
 
+  // Helper to extract score (handles both old number format and new object format)
+  const getScore = (scoreData: any): number => {
+    // Handle object format: {total: 78, breakdown: {...}}
+    if (scoreData && typeof scoreData === 'object' && typeof scoreData.total === 'number') {
+      return scoreData.total;
+    }
+    // Handle direct number format
+    if (typeof scoreData === 'number' && !isNaN(scoreData)) {
+      return scoreData;
+    }
+    // Fallback
+    return 70;
+  };
+
   // Share result
   const handleShare = async () => {
+    const scoreValue = analysis ? getScore(analysis.score) : 0;
     try {
       await Share.share({
-        message: `My skin health score is ${analysis?.score || 0}/100 (${getScoreLabel(analysis?.score || 0)})! Analyzed with SkinGlow AI 🌟`,
+        message: `My skin health score is ${scoreValue}/100 (${getScoreLabel(scoreValue)})! Analyzed with SkinGlow AI 🌟`,
       });
     } catch (error) {
       console.log('Share error:', error);
@@ -172,8 +190,9 @@ export default function Result() {
     );
   }
 
-  const score = analysis.score ?? 70;
+  const score = getScore(analysis.score);
   const scoreColor = getScoreColor(score);
+  const scoreBreakdown = typeof analysis.score === 'object' ? analysis.score.breakdown : null;
 
   return (
     <SafeAreaView style={styles.safe}>

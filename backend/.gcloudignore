@@ -1,0 +1,14 @@
+# Skip unnecessary files during deployment
+__pycache__/
+*.pyc
+*.pyo
+.git/
+.gitignore
+.env
+venv/
+.venv/
+*.md
+tests/
+.pytest_cache/
+.mypy_cache/
+*.egg-info/

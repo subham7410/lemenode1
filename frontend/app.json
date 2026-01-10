@@ -3,7 +3,7 @@
     "name": "SkinGlow AI",
     "slug": "skinglow-ai",
     "scheme": "skinglowai",
-    "version": "2.0.0",
+    "version": "2.4.0",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
     "icon": "./assets/adaptive-icon.png",

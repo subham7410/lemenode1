@@ -11,11 +11,7 @@ import { colors, radius, shadows } from "../../theme";
 
 function TabBarIcon({ name, focused, color }: { name: string; focused: boolean; color: string }) {
   const iconName = focused ? name : `${name}-outline`;
-  return (
-    <View style={[styles.iconContainer, focused && styles.iconContainerActive]}>
-      <Ionicons name={iconName as any} size={22} color={color} />
-    </View>
-  );
+  return <Ionicons name={iconName as any} size={22} color={color} />;
 }
 
 function TabsContent() {
@@ -46,7 +42,7 @@ function TabsContent() {
       <Tabs.Screen
         name="upload"
         options={{
-          title: "Analyze",
+          title: "Scan",
           tabBarIcon: ({ color, focused }) => (
             <TabBarIcon name="scan" focused={focused} color={color} />
           ),
@@ -64,7 +60,7 @@ function TabsContent() {
       <Tabs.Screen
         name="health"
         options={{
-          title: "Health",
+          title: "Tips",
           tabBarIcon: ({ color, focused }) => (
             <TabBarIcon name="heart" focused={focused} color={color} />
           ),
@@ -82,7 +78,7 @@ function TabsContent() {
       <Tabs.Screen
         name="profile"
         options={{
-          title: "Profile",
+          title: "Me",
           tabBarIcon: ({ color, focused }) => (
             <TabBarIcon name="person" focused={focused} color={color} />
           ),
@@ -103,18 +99,20 @@ export default function TabsLayout() {
 const styles = StyleSheet.create({
   tabBarItem: {
     paddingTop: 4,
+    minWidth: 60,
   },
   tabBarLabel: {
-    fontSize: 11,
-    fontFamily: "Inter_600SemiBold",
-    marginTop: 4,
+    fontSize: 10,
+    fontFamily: "Inter_500Medium",
+    marginTop: 2,
+    textAlign: "center",
   },
   iconContainer: {
-    width: 40,
-    height: 32,
+    width: 36,
+    height: 28,
     alignItems: "center",
     justifyContent: "center",
-    borderRadius: radius.lg,
+    borderRadius: radius.md,
   },
   iconContainerActive: {
     backgroundColor: colors.primary[100],

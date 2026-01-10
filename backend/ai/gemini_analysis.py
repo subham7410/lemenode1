@@ -3,6 +3,7 @@ import io
 import json
 import re
 import logging
+import time
 from typing import Dict, Any
 
 from dotenv import load_dotenv
@@ -10,43 +11,116 @@ from PIL import Image
 from google import genai
 from google.genai import types
 
+# Import centralized config
+import sys
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from config import settings
+
 load_dotenv()
 
 logger = logging.getLogger("gemini")
-logging.basicConfig(level=logging.INFO)
 
-# Initialize Gemini client
-try:
-    client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
-    logger.info("Gemini client initialized successfully")
-except Exception as e:
-    logger.error(f"Failed to initialize Gemini: {e}")
-    client = None
+# Initialize Gemini client (reused across requests)
+_client = None
+
+
+def get_gemini_client():
+    """Get or create Gemini client (singleton pattern for connection reuse)."""
+    global _client
+    if _client is None:
+        api_key = settings.GEMINI_API_KEY
+        if not api_key:
+            raise Exception("GEMINI_API_KEY not configured")
+        _client = genai.Client(api_key=api_key)
+        logger.info("Gemini client initialized successfully")
+    return _client
+
+
+def optimize_image(image_bytes: bytes) -> bytes:
+    """
+    Aggressively optimize image for faster processing and lower API costs.
+    - Resize to max 1280x1280 (was 1920x1920)
+    - Compress to 70% JPEG quality (was 85%)
+    - Convert RGBA to RGB if needed
+    """
+    img = Image.open(io.BytesIO(image_bytes))
+    
+    # Convert RGBA to RGB (Gemini doesn't need alpha)
+    if img.mode == 'RGBA':
+        background = Image.new('RGB', img.size, (255, 255, 255))
+        background.paste(img, mask=img.split()[3])
+        img = background
+    elif img.mode != 'RGB':
+        img = img.convert('RGB')
+    
+    # Resize if too large
+    max_size = settings.MAX_IMAGE_SIZE  # (1280, 1280) from config
+    if img.size[0] > max_size[0] or img.size[1] > max_size[1]:
+        img.thumbnail(max_size, Image.Resampling.LANCZOS)
+        logger.info(f"Resized image to {img.size}")
+    
+    # Compress
+    buffer = io.BytesIO()
+    img.save(buffer, format='JPEG', quality=settings.IMAGE_QUALITY, optimize=True)
+    optimized_bytes = buffer.getvalue()
+    
+    reduction = (1 - len(optimized_bytes) / len(image_bytes)) * 100
+    logger.info(f"Image optimized: {len(image_bytes)} -> {len(optimized_bytes)} bytes ({reduction:.1f}% reduction)")
+    
+    return optimized_bytes
+
+
+def call_gemini_with_retry(client, prompt: str, image_bytes: bytes) -> str:
+    """
+    Call Gemini API with retry logic and exponential backoff.
+    """
+    max_retries = settings.GEMINI_MAX_RETRIES
+    
+    for attempt in range(max_retries + 1):
+        try:
+            response = client.models.generate_content(
+                model=settings.GEMINI_MODEL,
+                contents=[
+                    prompt,
+                    types.Part.from_bytes(
+                        data=image_bytes,
+                        mime_type="image/jpeg"
+                    )
+                ],
+                config=types.GenerateContentConfig(
+                    temperature=0.9,
+                    top_p=0.95,
+                    top_k=40,
+                    max_output_tokens=4096,
+                )
+            )
+            return response.text.strip()
+            
+        except Exception as e:
+            if attempt < max_retries:
+                wait_time = (2 ** attempt) * 0.5  # 0.5s, 1s, 2s...
+                logger.warning(f"Gemini API attempt {attempt + 1} failed: {e}. Retrying in {wait_time}s...")
+                time.sleep(wait_time)
+            else:
+                logger.error(f"Gemini API failed after {max_retries + 1} attempts: {e}")
+                raise
+
 
 def analyze_skin_with_gemini(
     image_bytes: bytes,
     user: Dict[str, Any]
 ) -> Dict[str, Any]:
     """
-    Analyze skin using Gemini AI with comprehensive, personalized analysis
+    Analyze skin using Gemini AI with comprehensive, personalized analysis.
+    Includes image optimization and retry logic.
     """
     
-    if not client:
-        raise Exception("Gemini client not initialized - check API key")
+    client = get_gemini_client()
 
     try:
-        # Validate image
-        img = Image.open(io.BytesIO(image_bytes))
-        img.verify()
-        img = Image.open(io.BytesIO(image_bytes))
-        
-        # Resize if too large (max 4MB for Gemini)
-        max_size = (1920, 1920)
-        if img.size[0] > max_size[0] or img.size[1] > max_size[1]:
-            img.thumbnail(max_size, Image.Resampling.LANCZOS)
-            buffer = io.BytesIO()
-            img.save(buffer, format='JPEG', quality=85)
-            image_bytes = buffer.getvalue()
+        # Optimize image before sending to Gemini
+        optimized_image = optimize_image(image_bytes)
+
 
         # Build comprehensive prompt with specific instructions
         prompt = f"""
@@ -92,7 +166,22 @@ RETURN ONLY VALID JSON (NO MARKDOWN, NO EXPLANATION):
   "skin_type": "oily|dry|normal|combination",
   "skin_tone": "fair|medium|olive|tan|deep",
   "overall_condition": "excellent|good|fair|needs attention",
-  "score": 50-95,
+  
+  "factor_ratings": {{
+    "texture": 0-100,
+    "hydration": 0-100,
+    "clarity": 0-100,
+    "tone": 0-100,
+    "aging": 0-100
+  }},
+  
+  "factor_notes": {{
+    "texture": "BRIEF note on texture (e.g., 'Mostly smooth with visible pores on nose')",
+    "hydration": "BRIEF note on hydration (e.g., 'Well-hydrated, slight dryness on cheeks')",
+    "clarity": "BRIEF note on clarity (e.g., 'Clear with 2-3 small whiteheads on chin')",
+    "tone": "BRIEF note on tone (e.g., 'Even tone, minor redness around nose')",
+    "aging": "BRIEF note on aging (e.g., 'No visible lines, appropriate for age')"
+  }},
   
   "visible_issues": [
     "SPECIFIC observation 1 with exact location (e.g., 'Visible enlarged pores on nose and center forehead')",
@@ -188,28 +277,11 @@ REMEMBER:
 - Every person's skin is unique - avoid cookie-cutter responses
 """
 
-        # Call Gemini API with higher temperature for more varied responses
-        logger.info("Sending detailed analysis request to Gemini API...")
+        # Call Gemini API with retry logic
+        logger.info("Sending analysis request to Gemini API...")
         
-        response = client.models.generate_content(
-            model="gemini-2.0-flash-exp",
-            contents=[
-                prompt,
-                types.Part.from_bytes(
-                    data=image_bytes,
-                    mime_type="image/jpeg"
-                )
-            ],
-            config=types.GenerateContentConfig(
-                temperature=0.9,  # Higher temperature for more creative, varied responses
-                top_p=0.95,
-                top_k=40,
-                max_output_tokens=4096,  # Increased for detailed responses
-            )
-        )
-
-        raw_text = response.text.strip()
-        logger.info(f"Received detailed response from Gemini ({len(raw_text)} chars)")
+        raw_text = call_gemini_with_retry(client, prompt, optimized_image)
+        logger.info(f"Received response from Gemini ({len(raw_text)} chars)")
 
         # Extract JSON from response
         json_match = re.search(r'\{[\s\S]*\}', raw_text)
@@ -236,20 +308,15 @@ REMEMBER:
 def validate_and_fix_response(data: Dict[str, Any], user: Dict[str, Any]) -> Dict[str, Any]:
     """Ensure response has all required fields with quality content"""
     
-    # Ensure score is valid integer
-    if not isinstance(data.get("score"), (int, float)):
-        condition_scores = {
-            "excellent": 88,
-            "good": 78,
-            "fair": 68,
-            "needs attention": 58
-        }
-        data["score"] = condition_scores.get(
-            data.get("overall_condition", "fair").lower(),
-            70
-        )
+    # Import skin scorer
+    from ai.skin_scorer import score_from_analysis
     
-    data["score"] = max(50, min(95, int(data["score"])))
+    # Calculate multi-factor score
+    user_age = int(user.get('age', 25))
+    score_result = score_from_analysis(data, user_age)
+    
+    # Set score as object with breakdown
+    data["score"] = score_result
     
     # Ensure minimum quality of content
     if not data.get("visible_issues") or len(data.get("visible_issues", [])) < 2:

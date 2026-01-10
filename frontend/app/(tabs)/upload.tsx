@@ -11,6 +11,10 @@ import {
   Pressable,
   ActivityIndicator,
   Alert,
+  ScrollView,
+  Dimensions,
+  KeyboardAvoidingView,
+  Platform,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
@@ -29,6 +33,7 @@ import {
   radius,
   shadows,
 } from "../../theme";
+import { getTipOfTheDay } from "../../data/skinTips";
 
 // Cloud Run backend URL
 const API_URL = "https://lemenode-backend-466053387222.asia-south1.run.app";
@@ -206,152 +211,162 @@ export default function Upload() {
   };
 
   return (
-    <SafeAreaView style={styles.safe}>
-      <View style={styles.container}>
-        {/* Header */}
-        <View style={styles.header}>
-          <Text style={styles.title}>Skin Analysis</Text>
-          <Text style={styles.subtitle}>
-            Upload a clear face photo for AI-powered analysis
-          </Text>
-        </View>
-
-        {/* Image Preview Area */}
-        <View style={styles.imageSection}>
-          {image ? (
-            <View style={styles.imageWrapper}>
-              <Image source={{ uri: image }} style={styles.image} />
-              {!loading && (
-                <Pressable style={styles.clearButton} onPress={clearImage}>
-                  <Ionicons name="close" size={20} color={colors.neutral[0]} />
-                </Pressable>
-              )}
-              {loading && (
-                <View style={styles.loadingOverlay}>
-                  <View style={styles.loadingContent}>
-                    <ActivityIndicator size="large" color={colors.neutral[0]} />
-                    <Text style={styles.loadingText}>{loadingMessage}</Text>
-                  </View>
-                </View>
-              )}
-            </View>
-          ) : (
-            <Pressable style={styles.placeholder} onPress={takePhoto}>
-              <View style={styles.placeholderIcon}>
-                <Ionicons name="scan-outline" size={48} color={colors.primary[400]} />
-              </View>
-              <Text style={styles.placeholderTitle}>Tap to capture</Text>
-              <Text style={styles.placeholderHint}>or use buttons below</Text>
-
-              {/* Face guide overlay hint */}
-              <View style={styles.faceGuide}>
-                <View style={styles.faceGuideCorner} />
-                <View style={[styles.faceGuideCorner, styles.faceGuideTopRight]} />
-                <View style={[styles.faceGuideCorner, styles.faceGuideBottomLeft]} />
-                <View style={[styles.faceGuideCorner, styles.faceGuideBottomRight]} />
-              </View>
-            </Pressable>
-          )}
-        </View>
-
-        {/* Action Buttons */}
-        <View style={styles.actionButtons}>
-          <Pressable
-            style={styles.actionButton}
-            onPress={takePhoto}
-            disabled={loading}
-          >
-            <LinearGradient
-              colors={colors.gradients.primary}
-              style={styles.actionButtonGradient}
-            >
-              <Ionicons name="camera" size={24} color={colors.neutral[0]} />
-            </LinearGradient>
-            <Text style={styles.actionButtonText}>Camera</Text>
-          </Pressable>
-
-          <Pressable
-            style={styles.actionButton}
-            onPress={pickImage}
-            disabled={loading}
-          >
-            <View style={styles.actionButtonOutline}>
-              <Ionicons name="images" size={24} color={colors.primary[600]} />
-            </View>
-            <Text style={styles.actionButtonText}>Gallery</Text>
-          </Pressable>
-        </View>
-
-        {/* Error Message */}
-        {error && (
-          <View style={styles.errorBox}>
-            <Ionicons name="alert-circle" size={20} color={colors.error} />
-            <Text style={styles.errorText}>{error}</Text>
-            <Pressable onPress={() => setError(null)}>
-              <Ionicons name="close" size={18} color={colors.error} />
-            </Pressable>
-          </View>
-        )}
-
-        {/* Expandable Tips */}
-        <Pressable
-          style={styles.tipsCard}
-          onPress={() => setTipsExpanded(!tipsExpanded)}
+    <SafeAreaView style={styles.safe} edges={["top"]}>
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+      >
+        {/* Scrollable Content */}
+        <ScrollView
+          style={styles.scrollView}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
         >
-          <View style={styles.tipsHeader}>
-            <View style={styles.tipsIcon}>
-              <Ionicons name="bulb" size={20} color={colors.warning} />
-            </View>
-            <Text style={styles.tipsTitle}>Photo Tips</Text>
-            <Ionicons
-              name={tipsExpanded ? "chevron-up" : "chevron-down"}
-              size={20}
-              color={colors.neutral[400]}
-            />
+          {/* Header */}
+          <View style={styles.header}>
+            <Text style={styles.title}>Skin Analysis</Text>
+            <Text style={styles.subtitle}>
+              Upload a clear face photo for AI-powered analysis
+            </Text>
           </View>
-          {tipsExpanded && (
-            <View style={styles.tipsContent}>
-              <View style={styles.tipRow}>
-                <Ionicons name="checkmark-circle" size={16} color={colors.accent[500]} />
-                <Text style={styles.tipText}>Face the camera directly</Text>
+
+          {/* Image Preview Area */}
+          <View style={styles.imageSection}>
+            {image ? (
+              <View style={styles.imageWrapper}>
+                <Image source={{ uri: image }} style={styles.image} />
+                {!loading && (
+                  <Pressable style={styles.clearButton} onPress={clearImage}>
+                    <Ionicons name="close" size={20} color={colors.neutral[0]} />
+                  </Pressable>
+                )}
+                {loading && (
+                  <View style={styles.loadingOverlay}>
+                    <View style={styles.loadingContent}>
+                      <ActivityIndicator size="large" color={colors.neutral[0]} />
+                      <Text style={styles.loadingText}>{loadingMessage}</Text>
+                    </View>
+                  </View>
+                )}
               </View>
-              <View style={styles.tipRow}>
-                <Ionicons name="checkmark-circle" size={16} color={colors.accent[500]} />
-                <Text style={styles.tipText}>Use natural lighting</Text>
+            ) : (
+              <Pressable style={styles.placeholder} onPress={takePhoto}>
+                <View style={styles.placeholderIcon}>
+                  <Ionicons name="scan-outline" size={40} color={colors.primary[400]} />
+                </View>
+                <Text style={styles.placeholderTitle}>Tap to capture</Text>
+                <Text style={styles.placeholderHint}>or use buttons below</Text>
+
+                {/* Face guide overlay hint */}
+                <View style={styles.faceGuide}>
+                  <View style={styles.faceGuideCorner} />
+                  <View style={[styles.faceGuideCorner, styles.faceGuideTopRight]} />
+                  <View style={[styles.faceGuideCorner, styles.faceGuideBottomLeft]} />
+                  <View style={[styles.faceGuideCorner, styles.faceGuideBottomRight]} />
+                </View>
+              </Pressable>
+            )}
+          </View>
+
+          {/* Action Buttons */}
+          <View style={styles.actionButtons}>
+            <Pressable
+              style={styles.actionButton}
+              onPress={takePhoto}
+              disabled={loading}
+            >
+              <LinearGradient
+                colors={colors.gradients.primary}
+                style={styles.actionButtonGradient}
+              >
+                <Ionicons name="camera" size={24} color={colors.neutral[0]} />
+              </LinearGradient>
+              <Text style={styles.actionButtonText}>Camera</Text>
+            </Pressable>
+
+            <Pressable
+              style={styles.actionButton}
+              onPress={pickImage}
+              disabled={loading}
+            >
+              <View style={styles.actionButtonOutline}>
+                <Ionicons name="images" size={24} color={colors.primary[600]} />
               </View>
-              <View style={styles.tipRow}>
-                <Ionicons name="checkmark-circle" size={16} color={colors.accent[500]} />
-                <Text style={styles.tipText}>No filters or heavy makeup</Text>
-              </View>
-              <View style={styles.tipRow}>
-                <Ionicons name="checkmark-circle" size={16} color={colors.accent[500]} />
-                <Text style={styles.tipText}>Keep a neutral expression</Text>
-              </View>
+              <Text style={styles.actionButtonText}>Gallery</Text>
+            </Pressable>
+          </View>
+
+          {/* Error Message */}
+          {error && (
+            <View style={styles.errorBox}>
+              <Ionicons name="alert-circle" size={20} color={colors.error} />
+              <Text style={styles.errorText}>{error}</Text>
+              <Pressable onPress={() => setError(null)}>
+                <Ionicons name="close" size={18} color={colors.error} />
+              </Pressable>
             </View>
           )}
-        </Pressable>
 
-        {/* Spacer */}
-        <View style={{ flex: 1 }} />
+          {/* Daily Skin Tip - Compact */}
+          {(() => {
+            const tip = getTipOfTheDay();
+            return (
+              <Pressable style={[styles.dailyTipCard, { borderLeftColor: tip.color }]}>
+                <View style={[styles.dailyTipIcon, { backgroundColor: tip.color + '15' }]}>
+                  <Ionicons name={tip.icon as any} size={18} color={tip.color} />
+                </View>
+                <View style={styles.dailyTipContent}>
+                  <Text style={styles.dailyTipLabel}>💡 {tip.title}</Text>
+                  <Text style={styles.dailyTipText} numberOfLines={2}>{tip.tip}</Text>
+                </View>
+              </Pressable>
+            );
+          })()}
 
-        {/* Analyze Button */}
-        <Button
-          title={loading ? "Analyzing..." : "Analyze My Skin"}
-          onPress={analyze}
-          disabled={!image || loading}
-          loading={loading}
-          leftIcon={loading ? undefined : "sparkles"}
-          fullWidth
-        />
-
-        {/* Previous Result Link */}
-        {analysis && !loading && (
-          <Pressable style={styles.previousLink} onPress={viewPreviousResult}>
-            <Text style={styles.previousLinkText}>View Previous Result</Text>
-            <Ionicons name="arrow-forward" size={16} color={colors.primary[600]} />
+          {/* Expandable Photo Tips */}
+          <Pressable
+            style={styles.tipsCard}
+            onPress={() => setTipsExpanded(!tipsExpanded)}
+          >
+            <View style={styles.tipsHeader}>
+              <Ionicons name="camera" size={18} color={colors.warning} />
+              <Text style={styles.tipsTitle}>Photo Tips</Text>
+              <Ionicons
+                name={tipsExpanded ? "chevron-up" : "chevron-down"}
+                size={18}
+                color={colors.neutral[400]}
+              />
+            </View>
+            {tipsExpanded && (
+              <View style={styles.tipsContent}>
+                <Text style={styles.tipText}>• Face camera directly • Natural lighting</Text>
+                <Text style={styles.tipText}>• No filters/makeup • Neutral expression</Text>
+              </View>
+            )}
           </Pressable>
-        )}
-      </View>
+        </ScrollView>
+
+        {/* Fixed Bottom Button */}
+        <View style={styles.bottomBar}>
+          <Button
+            title={loading ? "Analyzing..." : "Analyze Skin"}
+            onPress={analyze}
+            disabled={!image || loading}
+            loading={loading}
+            leftIcon={loading ? undefined : "sparkles"}
+            fullWidth
+          />
+
+          {/* Previous Result Link */}
+          {analysis && !loading && (
+            <Pressable style={styles.previousLink} onPress={viewPreviousResult}>
+              <Text style={styles.previousLinkText}>View Previous Result</Text>
+              <Ionicons name="arrow-forward" size={16} color={colors.primary[600]} />
+            </Pressable>
+          )}
+        </View>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
@@ -361,14 +376,24 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background.primary,
   },
-  container: {
+  scrollView: {
     flex: 1,
+  },
+  scrollContent: {
     padding: layout.screenPaddingHorizontal,
+    paddingBottom: spacing[4],
+  },
+  bottomBar: {
+    padding: layout.screenPaddingHorizontal,
+    paddingBottom: spacing[4],
+    backgroundColor: colors.background.primary,
+    borderTopWidth: 1,
+    borderTopColor: colors.border.light,
   },
 
   // Header
   header: {
-    marginBottom: spacing[5],
+    marginBottom: spacing[4],
   },
   title: {
     ...textStyles.h2,
@@ -382,10 +407,10 @@ const styles = StyleSheet.create({
 
   // Image Section
   imageSection: {
-    marginBottom: spacing[5],
+    marginBottom: spacing[4],
   },
   imageWrapper: {
-    height: 320,
+    height: 260,
     borderRadius: radius.xl,
     overflow: "hidden",
     backgroundColor: colors.neutral[200],
@@ -422,7 +447,7 @@ const styles = StyleSheet.create({
 
   // Placeholder
   placeholder: {
-    height: 320,
+    height: 260,
     borderRadius: radius.xl,
     borderWidth: 2,
     borderColor: colors.primary[200],
@@ -434,13 +459,13 @@ const styles = StyleSheet.create({
     overflow: "hidden",
   },
   placeholderIcon: {
-    width: 80,
-    height: 80,
+    width: 64,
+    height: 64,
     borderRadius: radius.full,
     backgroundColor: colors.primary[100],
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: spacing[4],
+    marginBottom: spacing[3],
   },
   placeholderTitle: {
     ...textStyles.h4,
@@ -552,40 +577,27 @@ const styles = StyleSheet.create({
   // Tips Card
   tipsCard: {
     backgroundColor: colors.warningLight,
-    borderRadius: radius.lg,
-    padding: spacing[4],
-    marginBottom: spacing[4],
+    borderRadius: radius.md,
+    padding: spacing[3],
+    marginBottom: spacing[2],
   },
   tipsHeader: {
     flexDirection: "row",
     alignItems: "center",
-  },
-  tipsIcon: {
-    width: 32,
-    height: 32,
-    borderRadius: radius.sm,
-    backgroundColor: "rgba(245, 158, 11, 0.2)",
-    alignItems: "center",
-    justifyContent: "center",
-    marginRight: spacing[3],
+    gap: spacing[2],
   },
   tipsTitle: {
-    ...textStyles.label,
+    ...textStyles.captionMedium,
     color: colors.warningDark,
     flex: 1,
   },
   tipsContent: {
-    marginTop: spacing[3],
-    gap: spacing[2],
-  },
-  tipRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing[2],
+    marginTop: spacing[2],
   },
   tipText: {
     ...textStyles.caption,
     color: colors.text.secondary,
+    fontSize: 12,
   },
 
   // Previous Result Link
@@ -599,5 +611,39 @@ const styles = StyleSheet.create({
   previousLinkText: {
     ...textStyles.label,
     color: colors.primary[600],
+  },
+
+  // Daily Tip Card
+  dailyTipCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: colors.neutral[0],
+    borderRadius: radius.md,
+    padding: spacing[3],
+    marginBottom: spacing[2],
+    borderLeftWidth: 3,
+    ...shadows.sm,
+  },
+  dailyTipIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: radius.sm,
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: spacing[3],
+  },
+  dailyTipContent: {
+    flex: 1,
+  },
+  dailyTipLabel: {
+    ...textStyles.captionMedium,
+    color: colors.text.primary,
+    marginBottom: 2,
+  },
+  dailyTipText: {
+    ...textStyles.caption,
+    color: colors.text.secondary,
+    fontSize: 12,
+    lineHeight: 16,
   },
 });
