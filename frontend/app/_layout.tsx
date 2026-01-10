@@ -3,7 +3,6 @@ import { AnalysisProvider, useAnalysis } from "../context/AnalysisContext";
 import { View, ActivityIndicator } from "react-native";
 import { useEffect, useState } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import * as SplashScreen from "expo-splash-screen";
 import * as Font from "expo-font";
 import {
   Inter_400Regular,
@@ -13,8 +12,7 @@ import {
   Inter_900Black,
 } from "@expo-google-fonts/inter";
 
-// Keep splash visible while loading - ignore errors
-SplashScreen.preventAutoHideAsync().catch(() => { });
+// NOTE: Removed all SplashScreen API calls - let Expo handle it automatically
 
 function RootStack() {
   const { loading, user } = useAnalysis();
@@ -58,64 +56,27 @@ function RootStack() {
 }
 
 export default function RootLayout() {
-  const [appReady, setAppReady] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [fontsLoaded, setFontsLoaded] = useState(false);
 
   useEffect(() => {
-    let isMounted = true;
+    // Load fonts in background - don't block rendering
+    Font.loadAsync({
+      Inter_400Regular,
+      Inter_500Medium,
+      Inter_600SemiBold,
+      Inter_700Bold,
+      Inter_900Black,
+    })
+      .then(() => setFontsLoaded(true))
+      .catch(() => setFontsLoaded(true)); // Continue even if fonts fail
 
-    async function prepare() {
-      try {
-        // Try to load fonts but don't block on failure
-        await Font.loadAsync({
-          Inter_400Regular,
-          Inter_500Medium,
-          Inter_600SemiBold,
-          Inter_700Bold,
-          Inter_900Black,
-        }).catch((e) => {
-          console.warn("Font loading failed:", e);
-        });
-      } catch (e) {
-        console.warn("Prepare error:", e);
-        if (isMounted) {
-          setError(String(e));
-        }
-      } finally {
-        if (isMounted) {
-          setAppReady(true);
-        }
-      }
-    }
-
-    // Add a timeout to ensure app becomes ready even if fonts hang
-    const timeout = setTimeout(() => {
-      if (isMounted && !appReady) {
-        console.warn("Font loading timed out, proceeding...");
-        setAppReady(true);
-      }
-    }, 5000);
-
-    prepare();
-
-    return () => {
-      isMounted = false;
-      clearTimeout(timeout);
-    };
+    // Fallback - set fonts loaded after 3 seconds no matter what
+    const timeout = setTimeout(() => setFontsLoaded(true), 3000);
+    return () => clearTimeout(timeout);
   }, []);
 
-  // Hide splash when ready
-  useEffect(() => {
-    if (appReady) {
-      SplashScreen.hideAsync().catch(() => { });
-    }
-  }, [appReady]);
-
-  // Show nothing while loading - native splash is visible
-  if (!appReady) {
-    return null;
-  }
-
+  // Always render the app - don't return null
+  // This allows the native splash to hide automatically
   return (
     <View style={{ flex: 1, backgroundColor: "#FAFAFA" }}>
       <AnalysisProvider>
