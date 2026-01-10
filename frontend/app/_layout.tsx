@@ -1,6 +1,6 @@
 import { Stack, Redirect, usePathname } from "expo-router";
 import { AnalysisProvider, useAnalysis } from "../context/AnalysisContext";
-import { View, ActivityIndicator, Text } from "react-native";
+import { View, ActivityIndicator } from "react-native";
 import { useEffect, useState } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as SplashScreen from "expo-splash-screen";
@@ -13,7 +13,7 @@ import {
   Inter_900Black,
 } from "@expo-google-fonts/inter";
 
-// Keep splash visible while loading
+// Keep splash visible while loading - ignore errors
 SplashScreen.preventAutoHideAsync().catch(() => { });
 
 function RootStack() {
@@ -27,6 +27,7 @@ function RootStack() {
       .catch(() => setOnboardingComplete(false));
   }, []);
 
+  // Show loading while checking state
   if (loading || onboardingComplete === null) {
     return (
       <View style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "#FAFAFA" }}>
@@ -58,38 +59,60 @@ function RootStack() {
 
 export default function RootLayout() {
   const [appReady, setAppReady] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    let isMounted = true;
+
     async function prepare() {
       try {
-        // Load fonts
+        // Try to load fonts but don't block on failure
         await Font.loadAsync({
           Inter_400Regular,
           Inter_500Medium,
           Inter_600SemiBold,
           Inter_700Bold,
           Inter_900Black,
+        }).catch((e) => {
+          console.warn("Font loading failed:", e);
         });
       } catch (e) {
-        console.warn("Font loading error:", e);
-        // Continue anyway - app will use system fonts
+        console.warn("Prepare error:", e);
+        if (isMounted) {
+          setError(String(e));
+        }
       } finally {
-        // Mark app as ready regardless of font loading result
-        setAppReady(true);
+        if (isMounted) {
+          setAppReady(true);
+        }
       }
     }
+
+    // Add a timeout to ensure app becomes ready even if fonts hang
+    const timeout = setTimeout(() => {
+      if (isMounted && !appReady) {
+        console.warn("Font loading timed out, proceeding...");
+        setAppReady(true);
+      }
+    }, 5000);
+
     prepare();
+
+    return () => {
+      isMounted = false;
+      clearTimeout(timeout);
+    };
   }, []);
 
+  // Hide splash when ready
   useEffect(() => {
     if (appReady) {
-      // Hide splash when ready
       SplashScreen.hideAsync().catch(() => { });
     }
   }, [appReady]);
 
+  // Show nothing while loading - native splash is visible
   if (!appReady) {
-    // Return null while loading - splash screen is still visible
     return null;
   }
 
