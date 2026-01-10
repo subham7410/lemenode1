@@ -1,7 +1,7 @@
 import { Stack, Redirect, usePathname } from "expo-router";
 import { AnalysisProvider, useAnalysis } from "../context/AnalysisContext";
 import { View, ActivityIndicator } from "react-native";
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as SplashScreen from "expo-splash-screen";
 import {
@@ -15,7 +15,9 @@ import {
 import { colors } from "../theme";
 
 // Prevent splash screen from auto-hiding
-SplashScreen.preventAutoHideAsync();
+SplashScreen.preventAutoHideAsync().catch(() => {
+  // Ignore errors if splash screen is already hidden
+});
 
 function RootStack() {
   const { loading, user } = useAnalysis();
@@ -26,16 +28,21 @@ function RootStack() {
 
   useEffect(() => {
     const checkOnboarding = async () => {
-      const completed = await AsyncStorage.getItem("@onboarding_complete");
-      setOnboardingComplete(completed === "true");
+      try {
+        const completed = await AsyncStorage.getItem("@onboarding_complete");
+        setOnboardingComplete(completed === "true");
+      } catch (e) {
+        // If error, assume not completed
+        setOnboardingComplete(false);
+      }
     };
     checkOnboarding();
   }, []);
 
   if (loading || onboardingComplete === null) {
     return (
-      <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
-        <ActivityIndicator size="large" />
+      <View style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: colors.background.primary }}>
+        <ActivityIndicator size="large" color={colors.primary[600]} />
       </View>
     );
   }
@@ -68,7 +75,7 @@ function RootStack() {
 }
 
 export default function RootLayout() {
-  const [fontsLoaded] = useFonts({
+  const [fontsLoaded, fontError] = useFonts({
     Inter_400Regular,
     Inter_500Medium,
     Inter_600SemiBold,
@@ -76,18 +83,32 @@ export default function RootLayout() {
     Inter_900Black,
   });
 
-  const onLayoutRootView = useCallback(async () => {
-    if (fontsLoaded) {
-      await SplashScreen.hideAsync();
-    }
-  }, [fontsLoaded]);
+  // Hide splash screen once fonts are loaded OR if there's an error
+  useEffect(() => {
+    const hideSplash = async () => {
+      if (fontsLoaded || fontError) {
+        try {
+          await SplashScreen.hideAsync();
+        } catch (e) {
+          // Ignore errors
+        }
+      }
+    };
+    hideSplash();
+  }, [fontsLoaded, fontError]);
 
-  if (!fontsLoaded) {
-    return null;
+  // Show loading until fonts are ready
+  // If font loading fails, proceed anyway (system fonts will be used)
+  if (!fontsLoaded && !fontError) {
+    return (
+      <View style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "#FAFAFA" }}>
+        <ActivityIndicator size="large" color="#6366F1" />
+      </View>
+    );
   }
 
   return (
-    <View style={{ flex: 1 }} onLayout={onLayoutRootView}>
+    <View style={{ flex: 1 }}>
       <AnalysisProvider>
         <RootStack />
       </AnalysisProvider>
