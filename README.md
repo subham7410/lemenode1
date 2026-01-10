@@ -183,4 +183,4 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 
 ---
 
-Made with ❤️ by the **SkinGlow Team**
+Made with ❤️ by the **Lemenode Team**
