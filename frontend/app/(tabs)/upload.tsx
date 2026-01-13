@@ -25,6 +25,7 @@ import { LinearGradient } from "expo-linear-gradient";
 
 import { useAnalysis } from "../../context/AnalysisContext";
 import { Button } from "../../components/ui";
+import { AnnouncementBanner } from "../../components/AnnouncementBanner";
 import {
   colors,
   textStyles,
@@ -212,6 +213,9 @@ export default function Upload() {
 
   return (
     <SafeAreaView style={styles.safe} edges={["top"]}>
+      {/* Announcement Banner */}
+      <AnnouncementBanner />
+
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === "ios" ? "padding" : undefined}

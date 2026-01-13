@@ -1,6 +1,6 @@
 /**
  * Reminders Screen
- * Allows users to set skincare routine reminders
+ * Allows users to set skincare routine reminders with actual push notifications
  */
 
 import { useState, useEffect } from "react";
@@ -12,12 +12,14 @@ import {
     Pressable,
     Switch,
     Alert,
+    Platform,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import * as Notifications from "expo-notifications";
 import {
     colors,
     textStyles,
@@ -26,6 +28,17 @@ import {
     radius,
     shadows,
 } from "../theme";
+
+// Configure notification handler
+Notifications.setNotificationHandler({
+    handleNotification: async () => ({
+        shouldShowAlert: true,
+        shouldPlaySound: true,
+        shouldSetBadge: false,
+        shouldShowBanner: true,
+        shouldShowList: true,
+    }),
+});
 
 const REMINDERS_KEY = "@lemenode_reminders";
 
@@ -52,6 +65,84 @@ const TIMES = [
     "06:00", "06:30", "07:00", "07:30", "08:00", "08:30", "09:00",
     "19:00", "19:30", "20:00", "20:30", "21:00", "21:30", "22:00",
 ];
+
+// Request notification permissions
+async function requestNotificationPermissions(): Promise<boolean> {
+    const { status: existingStatus } = await Notifications.getPermissionsAsync();
+    let finalStatus = existingStatus;
+
+    if (existingStatus !== "granted") {
+        const { status } = await Notifications.requestPermissionsAsync();
+        finalStatus = status;
+    }
+
+    if (finalStatus !== "granted") {
+        Alert.alert(
+            "Notifications Disabled",
+            "Please enable notifications in your device settings to receive reminders.",
+            [{ text: "OK" }]
+        );
+        return false;
+    }
+    return true;
+}
+
+// Schedule a daily notification
+async function scheduleDailyNotification(
+    identifier: string,
+    hour: number,
+    minute: number,
+    title: string,
+    body: string
+) {
+    await Notifications.cancelScheduledNotificationAsync(identifier).catch(() => { });
+
+    await Notifications.scheduleNotificationAsync({
+        identifier,
+        content: {
+            title,
+            body,
+            sound: true,
+        },
+        trigger: {
+            type: Notifications.SchedulableTriggerInputTypes.DAILY,
+            hour,
+            minute,
+        },
+    });
+}
+
+// Schedule a weekly notification
+async function scheduleWeeklyNotification(
+    identifier: string,
+    weekday: number,
+    hour: number,
+    minute: number,
+    title: string,
+    body: string
+) {
+    await Notifications.cancelScheduledNotificationAsync(identifier).catch(() => { });
+
+    await Notifications.scheduleNotificationAsync({
+        identifier,
+        content: {
+            title,
+            body,
+            sound: true,
+        },
+        trigger: {
+            type: Notifications.SchedulableTriggerInputTypes.WEEKLY,
+            weekday,
+            hour,
+            minute,
+        },
+    });
+}
+
+// Cancel a scheduled notification
+async function cancelNotification(identifier: string) {
+    await Notifications.cancelScheduledNotificationAsync(identifier).catch(() => { });
+}
 
 // Reminder card component
 function ReminderCard({
@@ -132,11 +223,17 @@ export default function Reminders() {
     const router = useRouter();
     const [settings, setSettings] = useState<ReminderSettings>(DEFAULT_SETTINGS);
     const [loading, setLoading] = useState(true);
+    const [hasPermission, setHasPermission] = useState(false);
 
-    // Load settings
+    // Load settings and check permissions
     useEffect(() => {
-        async function load() {
+        async function init() {
             try {
+                // Check notification permissions
+                const { status } = await Notifications.getPermissionsAsync();
+                setHasPermission(status === "granted");
+
+                // Load saved settings
                 const stored = await AsyncStorage.getItem(REMINDERS_KEY);
                 if (stored) {
                     setSettings(JSON.parse(stored));
@@ -147,28 +244,97 @@ export default function Reminders() {
                 setLoading(false);
             }
         }
-        load();
+        init();
     }, []);
 
-    // Save settings
+    // Save settings and schedule notifications
     async function saveSettings(newSettings: ReminderSettings) {
         setSettings(newSettings);
         await AsyncStorage.setItem(REMINDERS_KEY, JSON.stringify(newSettings));
     }
 
-    const updateSetting = <K extends keyof ReminderSettings>(
+    const updateSetting = async <K extends keyof ReminderSettings>(
         key: K,
         value: ReminderSettings[K]
     ) => {
+        // If enabling a reminder, check permissions first
+        if (typeof value === "boolean" && value === true) {
+            const granted = await requestNotificationPermissions();
+            if (!granted) return;
+            setHasPermission(true);
+        }
         saveSettings({ ...settings, [key]: value });
     };
 
-    const handleSave = () => {
-        Alert.alert(
-            "Reminders Saved! 🔔",
-            "Note: Local notifications require a native app build. Your preferences are saved and will work when notifications are enabled.",
-            [{ text: "OK", onPress: () => router.back() }]
-        );
+    const handleSave = async () => {
+        // Request permissions if any reminder is enabled
+        const anyEnabled = settings.morningEnabled || settings.eveningEnabled || settings.weeklyEnabled;
+
+        if (anyEnabled) {
+            const granted = await requestNotificationPermissions();
+            if (!granted) return;
+        }
+
+        // Schedule or cancel notifications based on settings
+        try {
+            // Morning reminder
+            if (settings.morningEnabled) {
+                const [hour, minute] = settings.morningTime.split(":").map(Number);
+                await scheduleDailyNotification(
+                    "morning-routine",
+                    hour,
+                    minute,
+                    "☀️ Morning Skincare",
+                    "Time for your morning skincare routine!"
+                );
+            } else {
+                await cancelNotification("morning-routine");
+            }
+
+            // Evening reminder
+            if (settings.eveningEnabled) {
+                const [hour, minute] = settings.eveningTime.split(":").map(Number);
+                await scheduleDailyNotification(
+                    "evening-routine",
+                    hour,
+                    minute,
+                    "🌙 Evening Skincare",
+                    "Time for your evening skincare routine!"
+                );
+            } else {
+                await cancelNotification("evening-routine");
+            }
+
+            // Weekly analysis reminder
+            if (settings.weeklyEnabled) {
+                const weekday = DAYS.indexOf(settings.weeklyDay) + 1; // 1-7 (Sunday = 1)
+                await scheduleWeeklyNotification(
+                    "weekly-analysis",
+                    weekday,
+                    10, // 10:00 AM
+                    0,
+                    "📊 Weekly Skin Check",
+                    "Time for your weekly skin analysis!"
+                );
+            } else {
+                await cancelNotification("weekly-analysis");
+            }
+
+            Alert.alert(
+                "Reminders Saved! 🔔",
+                anyEnabled
+                    ? "Your skincare reminders have been scheduled. You'll receive notifications at your chosen times."
+                    : "All reminders have been turned off.",
+                [{ text: "OK", onPress: () => router.back() }]
+            );
+        } catch (e) {
+            console.error("Error scheduling notifications:", e);
+            Alert.alert(
+                "Error",
+                "Failed to schedule reminders. Please try again.",
+                [{ text: "OK" }]
+            );
+        }
     };
 
     return (

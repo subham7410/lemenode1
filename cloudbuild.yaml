@@ -22,15 +22,17 @@ steps:
       - 'managed'
       - '--allow-unauthenticated'
       - '--memory'
-      - '512Mi'
+      - '1Gi'  # Increased for Firebase SDK
       - '--set-env-vars'
-      - 'GEMINI_API_KEY=${_GEMINI_API_KEY}'
+      - 'GEMINI_API_KEY=${_GEMINI_API_KEY},FIREBASE_PROJECT_ID=$PROJECT_ID,CORS_ORIGINS=${_CORS_ORIGINS}'
 
 images:
   - 'gcr.io/$PROJECT_ID/lemenode-backend'
 
 substitutions:
   _GEMINI_API_KEY: ''  # Set via command line or trigger
+  _CORS_ORIGINS: 'https://skinglow.app'  # Your production domains
 
 options:
   logging: CLOUD_LOGGING_ONLY
+

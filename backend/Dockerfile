@@ -26,6 +26,7 @@ COPY --from=builder /root/.local /root/.local
 ENV PATH=/root/.local/bin:$PATH
 
 # Copy application code
+# Cache bust: 2026-01-12-v15-uvicorn-restored-all
 COPY . .
 
 # Compile Python bytecode for faster startup
@@ -38,16 +39,6 @@ EXPOSE 8080
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONDONTWRITEBYTECODE=1
 
-# Run with gunicorn + uvicorn workers for production
-# - 2 workers (Cloud Run recommends 1-4)
-# - 30s timeout (matches Gemini API)
-# - Graceful shutdown
-CMD ["gunicorn", "main:app", \
-    "--bind", "0.0.0.0:8080", \
-    "--workers", "2", \
-    "--worker-class", "uvicorn.workers.UvicornWorker", \
-    "--timeout", "30", \
-    "--graceful-timeout", "10", \
-    "--keep-alive", "5", \
-    "--access-logfile", "-", \
-    "--error-logfile", "-"]
+# Run with uvicorn directly for simplicity and to avoid gunicorn timeout issues
+# Cloud Run manages process lifecycle, so gunicorn process manager is less critical
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8080", "--workers", "1"]

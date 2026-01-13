@@ -1,5 +1,6 @@
 import { Stack } from "expo-router";
 import { AnalysisProvider } from "../context/AnalysisContext";
+import { AuthProvider } from "../context/AuthContext";
 import { View, Text, StyleSheet } from "react-native";
 import { useEffect, useState } from "react";
 import * as Font from "expo-font";
@@ -64,18 +65,22 @@ export default function RootLayout() {
     );
   }
 
-  // Always render - navigation logic is in index.tsx
+  // Wrap with AuthProvider for authentication state
   return (
     <View style={{ flex: 1, backgroundColor: "#FAFAFA" }}>
-      <AnalysisProvider>
-        <Stack screenOptions={{ headerShown: false }}>
-          <Stack.Screen name="index" />
-          <Stack.Screen name="onboarding" />
-          <Stack.Screen name="user-info" />
-          <Stack.Screen name="(tabs)" />
-          <Stack.Screen name="result" options={{ presentation: "modal" }} />
-        </Stack>
-      </AnalysisProvider>
+      <AuthProvider>
+        <AnalysisProvider>
+          <Stack screenOptions={{ headerShown: false }}>
+            <Stack.Screen name="index" />
+            <Stack.Screen name="login" />
+            <Stack.Screen name="onboarding" />
+            <Stack.Screen name="user-info" />
+            <Stack.Screen name="(tabs)" />
+            <Stack.Screen name="profile" options={{ presentation: "modal" }} />
+            <Stack.Screen name="result" options={{ presentation: "modal" }} />
+          </Stack>
+        </AnalysisProvider>
+      </AuthProvider>
     </View>
   );
 }

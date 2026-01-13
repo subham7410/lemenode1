@@ -334,7 +334,7 @@ const styles = StyleSheet.create({
         color: colors.text.primary,
         marginBottom: spacing[6],
         borderWidth: 1,
-        borderColor: colors.border.default,
+        borderColor: colors.border.light,
     },
     emailInput: {
         backgroundColor: colors.neutral[0],
@@ -343,7 +343,7 @@ const styles = StyleSheet.create({
         ...textStyles.body,
         color: colors.text.primary,
         borderWidth: 1,
-        borderColor: colors.border.default,
+        borderColor: colors.border.light,
     },
     hint: {
         ...textStyles.caption,

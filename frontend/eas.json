@@ -15,8 +15,15 @@
     "production": {
       "autoIncrement": true,
       "channel": "production",
+      "cache": {
+        "disabled": true
+      },
       "android": {
-        "buildType": "apk"
+        "buildType": "apk",
+        "gradleCommand": ":app:assembleRelease --no-daemon"
+      },
+      "env": {
+        "EAS_BUILD_RUNNER": "eas-build"
       }
     }
   },

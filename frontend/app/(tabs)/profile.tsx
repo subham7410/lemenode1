@@ -3,10 +3,11 @@
  * User profile with stats, settings, and analysis history
  */
 
-import { ScrollView, Text, View, StyleSheet, Pressable, Alert } from "react-native";
+import { ScrollView, Text, View, StyleSheet, Pressable, Alert, Image } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import { useAnalysis } from "../../context/AnalysisContext";
+import { useAuth } from "../../context/AuthContext";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import {
@@ -79,10 +80,37 @@ function ActionRow({ icon, iconColor, title, subtitle, onPress, destructive }: A
 
 export default function Profile() {
   const { user, analysis, clearAnalysis } = useAnalysis();
+  const { user: authUser, isAuthenticated, signInWithGoogle, signOut } = useAuth();
   const router = useRouter();
 
   const handleEditProfile = () => {
     router.push("/user-info");
+  };
+
+  const handleSignIn = async () => {
+    try {
+      await signInWithGoogle();
+    } catch (e: any) {
+      Alert.alert("Sign In Failed", e.message || "Please try again");
+    }
+  };
+
+  const handleSignOut = () => {
+    Alert.alert(
+      "Sign Out",
+      "Are you sure you want to sign out?",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Sign Out",
+          style: "destructive",
+          onPress: async () => {
+            await signOut();
+            Alert.alert("Success", "You have been signed out");
+          },
+        },
+      ]
+    );
   };
 
   const handleClearData = () => {
@@ -264,6 +292,58 @@ export default function Profile() {
             </View>
           </View>
         )}
+
+        {/* Account Section */}
+        <View style={styles.actionsSection}>
+          <Text style={styles.sectionTitle}>Account</Text>
+          <View style={styles.actionsCard}>
+            {isAuthenticated ? (
+              <>
+                <View style={styles.accountRow}>
+                  {authUser?.photo_url ? (
+                    <Image source={{ uri: authUser.photo_url }} style={styles.accountAvatar} />
+                  ) : (
+                    <View style={[styles.accountAvatar, styles.accountAvatarPlaceholder]}>
+                      <Ionicons name="person" size={20} color={colors.neutral[400]} />
+                    </View>
+                  )}
+                  <View style={styles.accountInfo}>
+                    <Text style={styles.accountName}>{authUser?.display_name || "Signed In"}</Text>
+                    <Text style={styles.accountEmail}>{authUser?.email}</Text>
+                    <View style={styles.tierBadge}>
+                      <Ionicons
+                        name={authUser?.tier === "pro" ? "star" : authUser?.tier === "unlimited" ? "diamond" : "person"}
+                        size={12}
+                        color={colors.neutral[0]}
+                      />
+                      <Text style={styles.tierText}>{authUser?.tier?.toUpperCase() || "FREE"}</Text>
+                    </View>
+                  </View>
+                </View>
+                <View style={styles.actionDivider} />
+                <ActionRow
+                  icon="log-out-outline"
+                  iconColor={colors.error}
+                  title="Sign Out"
+                  subtitle="Sign out of your account"
+                  onPress={handleSignOut}
+                  destructive
+                />
+              </>
+            ) : (
+              <View style={{ padding: spacing[4], alignItems: "center" }}>
+                <Ionicons name="person-circle-outline" size={48} color={colors.primary[200]} />
+                <Text style={{ ...textStyles.bodyMedium, color: colors.text.secondary, marginTop: spacing[2] }}>
+                  Guest Mode Active
+                </Text>
+                <Text style={{ ...textStyles.caption, color: colors.text.tertiary, marginTop: spacing[1], textAlign: 'center' }}>
+                  Sign in features coming in next update.
+                  Your scans are saved on this device.
+                </Text>
+              </View>
+            )}
+          </View>
+        </View>
 
         {/* Actions */}
         <View style={styles.actionsSection}>
@@ -688,5 +768,51 @@ const styles = StyleSheet.create({
     ...textStyles.caption,
     color: colors.accent[600],
     fontSize: 10,
+  },
+
+  // Account Section
+  accountRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: spacing[4],
+  },
+  accountAvatar: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    marginRight: spacing[3],
+  },
+  accountAvatarPlaceholder: {
+    backgroundColor: colors.neutral[100],
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  accountInfo: {
+    flex: 1,
+  },
+  accountName: {
+    ...textStyles.bodyMedium,
+    color: colors.text.primary,
+  },
+  accountEmail: {
+    ...textStyles.caption,
+    color: colors.text.tertiary,
+    marginTop: spacing[0.5],
+  },
+  tierBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing[1],
+    backgroundColor: colors.primary[500],
+    paddingHorizontal: spacing[2],
+    paddingVertical: spacing[0.5],
+    borderRadius: radius.full,
+    marginTop: spacing[2],
+    alignSelf: "flex-start",
+  },
+  tierText: {
+    fontSize: 10,
+    fontWeight: "700",
+    color: colors.neutral[0],
   },
 });

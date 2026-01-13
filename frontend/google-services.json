@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "466053387222",
+    "project_id": "gen-lang-client-0934552117",
+    "storage_bucket": "gen-lang-client-0934552117.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:466053387222:android:53e3a82a9109078f4aca77",
+        "android_client_info": {
+          "package_name": "com.lemenode.skinglow"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "466053387222-ovqb4rua9kd8om3v7e30il56oce5epnf.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDp9H1lnCu8X30F5l9L13HrDLLkB5-6ai0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "466053387222-ovqb4rua9kd8om3v7e30il56oce5epnf.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

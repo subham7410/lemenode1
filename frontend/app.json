@@ -3,7 +3,7 @@
     "name": "SkinGlow AI",
     "slug": "skinglow-ai",
     "scheme": "skinglowai",
-    "version": "2.4.0",
+    "version": "3.1.0",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
     "icon": "./assets/adaptive-icon.png",
@@ -17,6 +17,7 @@
     ],
     "android": {
       "package": "com.lemenode.skinglow",
+      "googleServicesFile": "./google-services.json",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#4F46E5"
@@ -24,7 +25,8 @@
       "permissions": [
         "android.permission.CAMERA",
         "android.permission.READ_MEDIA_IMAGES",
-        "android.permission.RECORD_AUDIO"
+        "android.permission.RECORD_AUDIO",
+        "android.permission.POST_NOTIFICATIONS"
       ]
     },
     "ios": {
@@ -44,7 +46,17 @@
           "photosPermission": "Allow SkinGlow AI to access your photos for skin analysis."
         }
       ],
-      "expo-font"
+      "expo-font",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/adaptive-icon.png",
+          "color": "#4F46E5"
+        }
+      ],
+      "@react-native-google-signin/google-signin",
+      "@react-native-firebase/app",
+      "@react-native-firebase/auth"
     ],
     "extra": {
       "router": {
