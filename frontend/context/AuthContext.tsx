@@ -1,7 +1,7 @@
 /**
  * AuthContext - Manages authentication state and Google Sign-In
  *
- * Uses expo-auth-session for Google OAuth (works without Firebase/google-services.json).
+ * Uses @react-native-google-signin/google-signin for native Google OAuth.
  * Provides login/logout functions and user state to entire app.
  */
 
@@ -13,12 +13,11 @@ import React, {
     ReactNode,
 } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import * as Google from "expo-auth-session/providers/google";
-import * as WebBrowser from "expo-web-browser";
+import {
+    GoogleSignin,
+    statusCodes,
+} from "@react-native-google-signin/google-signin";
 import { api } from "../services/api";
-
-// Complete auth session for web browser
-WebBrowser.maybeCompleteAuthSession();
 
 // Storage keys
 const AUTH_TOKEN_KEY = "@skinglow_auth_token";
@@ -52,35 +51,19 @@ type AuthContextType = {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Google OAuth client IDs from environment
+// Google OAuth Web Client ID from environment
 const GOOGLE_WEB_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID || "";
-const GOOGLE_ANDROID_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID || "";
 
-console.log("AuthContext: Google OAuth configured", {
-    webClientId: GOOGLE_WEB_CLIENT_ID ? "SET" : "NOT SET",
-    androidClientId: GOOGLE_ANDROID_CLIENT_ID ? "SET" : "NOT SET",
+// Configure Google Sign-In
+GoogleSignin.configure({
+    webClientId: GOOGLE_WEB_CLIENT_ID,
+    offlineAccess: false,
 });
 
 export function AuthProvider({ children }: { children: ReactNode }) {
     const [user, setUser] = useState<UserProfile | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [token, setToken] = useState<string | null>(null);
-
-    // Configure Google Auth Request
-    const [request, response, promptAsync] = Google.useIdTokenAuthRequest({
-        clientId: GOOGLE_WEB_CLIENT_ID,
-        androidClientId: GOOGLE_ANDROID_CLIENT_ID,
-    });
-
-    // Handle auth response
-    useEffect(() => {
-        if (response?.type === "success") {
-            const { id_token } = response.params;
-            if (id_token) {
-                verifyTokenAndLogin(id_token);
-            }
-        }
-    }, [response]);
 
     // Load stored auth on mount
     useEffect(() => {
@@ -125,8 +108,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 api.defaults.headers.common["Authorization"] = `Bearer ${idToken}`;
                 console.log(response.data.is_new_user ? "New user created" : "User logged in");
             } else {
-                console.error("Token verification failed - invalid response");
-                throw new Error("Token verification failed");
+                console.error("Token verification failed:", response.data.error_reason);
+                throw new Error(response.data.error_reason || "Token verification failed");
             }
         } catch (error) {
             console.error("Token verification error:", error);
@@ -144,15 +127,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 throw new Error("Google Sign-In is not configured. Missing EXPO_PUBLIC_GOOGLE_CLIENT_ID.");
             }
 
-            if (!request) {
-                throw new Error("Auth request not ready. Please try again.");
+            // Check if Google Play Services are available
+            await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
+
+            // Sign in with Google - the ID token is returned in the result
+            const signInResult = await GoogleSignin.signIn();
+
+            // Get ID token based on library version
+            const idToken = signInResult?.data?.idToken || (signInResult as any)?.idToken;
+
+            if (!idToken || typeof idToken !== 'string') {
+                throw new Error("Failed to get ID token from Google Sign-In");
             }
 
-            console.log("Starting Google Sign-In via expo-auth-session...");
-            await promptAsync();
-            // Response is handled in useEffect above
+            // Verify with backend and complete login
+            await verifyTokenAndLogin(idToken);
+
         } catch (error: any) {
             console.error("Sign-in error:", error);
+
+            // Handle specific Google Sign-In errors
+            if (error.code === statusCodes.SIGN_IN_CANCELLED) {
+                console.log("User cancelled sign-in");
+            } else if (error.code === statusCodes.IN_PROGRESS) {
+                console.log("Sign-in already in progress");
+            } else if (error.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
+                console.error("Play Services not available");
+            }
+
             throw error;
         } finally {
             setIsLoading(false);
@@ -160,6 +162,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     async function signOut() {
+        try {
+            await GoogleSignin.signOut();
+        } catch (e) {
+            console.error("Google sign out error:", e);
+        }
+
         setUser(null);
         setToken(null);
         delete api.defaults.headers.common["Authorization"];

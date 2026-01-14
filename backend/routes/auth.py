@@ -32,12 +32,17 @@ async def verify_token(request: TokenVerifyRequest):
         - valid: Whether the token is valid
         - user: User profile data
         - is_new_user: Whether this is a new user (first login)
+        - error_reason: Detailed error if validation failed
     """
     import requests
     
     logger = logging.getLogger("routes.auth")
     
     try:
+        # Log token info for debugging (first 50 chars only for security)
+        token_preview = request.id_token[:50] if len(request.id_token) > 50 else request.id_token
+        logger.info(f"Verifying token (length={len(request.id_token)}, preview={token_preview}...)")
+        
         # Verify token with Google's tokeninfo endpoint
         response = requests.get(
             f"https://oauth2.googleapis.com/tokeninfo?id_token={request.id_token}",
@@ -45,21 +50,27 @@ async def verify_token(request: TokenVerifyRequest):
         )
         
         if response.status_code != 200:
-            logger.warning(f"Google tokeninfo failed: {response.status_code} - {response.text[:200]}")
-            # Try verifying as checking if it's a firebase token
-            # But primary flow is Google ID token now
-            return TokenVerifyResponse(valid=False, user=None, is_new_user=False)
+            error_msg = f"Google tokeninfo failed: status={response.status_code}, response={response.text[:300]}"
+            logger.warning(error_msg)
+            return TokenVerifyResponse(valid=False, user=None, is_new_user=False, error_reason=error_msg)
         
         idinfo = response.json()
         logger.info(f"Token verified for user: {idinfo.get('email')}")
         
         # Check issuer
         if idinfo.get('iss') not in ['accounts.google.com', 'https://accounts.google.com']:
-            logger.warning(f"Invalid issuer: {idinfo.get('iss')}")
-            return TokenVerifyResponse(valid=False, user=None, is_new_user=False)
+            error_msg = f"Invalid issuer: {idinfo.get('iss')}"
+            logger.warning(error_msg)
+            return TokenVerifyResponse(valid=False, user=None, is_new_user=False, error_reason=error_msg)
         
         # Get or create user in Firestore
-        user_profile, is_new = await get_or_create_user(idinfo)
+        # Extract user info from the Google token response
+        user_profile, is_new = await get_or_create_user(
+            uid=idinfo.get('sub'),  # Google's user ID
+            email=idinfo.get('email'),
+            display_name=idinfo.get('name'),
+            photo_url=idinfo.get('picture')
+        )
         
         return TokenVerifyResponse(
             valid=True,
@@ -68,11 +79,13 @@ async def verify_token(request: TokenVerifyRequest):
         )
         
     except requests.RequestException as e:
-        logger.warning(f"Token verification request failed: {e}")
-        return TokenVerifyResponse(valid=False, user=None, is_new_user=False)
+        error_msg = f"Token verification request failed: {str(e)}"
+        logger.warning(error_msg)
+        return TokenVerifyResponse(valid=False, user=None, is_new_user=False, error_reason=error_msg)
     except Exception as e:
-        logger.warning(f"Token verification failed: {e}")
-        return TokenVerifyResponse(valid=False, user=None, is_new_user=False)
+        error_msg = f"Token verification failed: {str(e)}"
+        logger.warning(error_msg)
+        return TokenVerifyResponse(valid=False, user=None, is_new_user=False, error_reason=error_msg)
 
 
 @router.get("/me", response_model=UserProfile)

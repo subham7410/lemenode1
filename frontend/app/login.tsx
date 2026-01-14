@@ -28,7 +28,8 @@ export default function LoginScreen() {
         try {
             setError(null);
             await signInWithGoogle();
-            // Navigation is handled by _layout.tsx based on auth state
+            // Navigate to index which will redirect based on auth/onboarding state
+            router.replace("/");
         } catch (e: any) {
             setError(e.message || "Sign in failed. Please try again.");
         }

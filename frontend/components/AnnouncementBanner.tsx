@@ -33,16 +33,18 @@ export interface Announcement {
     expiresAt?: string;
 }
 
-// Default announcements (can be fetched from backend later)
+// Default announcements - empty by default, can be populated from backend API
 const DEFAULT_ANNOUNCEMENTS: Announcement[] = [
-    {
-        id: "v2.5.0-release",
-        title: "🎉 New Version Available!",
-        message: "Version 2.5.0 brings improved skin analysis and new health tips. Update now for the best experience!",
-        type: "update",
-        actionLabel: "Learn More",
-        actionUrl: "https://github.com/lemenode/skinglow-ai/releases",
-    },
+    // Announcements can be fetched from backend API when needed
+    // Example:
+    // {
+    //     id: "v2.5.0-release",
+    //     title: "🎉 New Version Available!",
+    //     message: "Version 2.5.0 brings improved skin analysis and new health tips.",
+    //     type: "update",
+    //     actionLabel: "Learn More",
+    //     actionUrl: "https://github.com/lemenode/skinglow-ai/releases",
+    // },
 ];
 
 // Props

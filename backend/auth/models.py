@@ -65,3 +65,4 @@ class TokenVerifyResponse(BaseModel):
     valid: bool
     user: Optional[UserProfile] = None
     is_new_user: bool = False
+    error_reason: Optional[str] = None  # Debug field to explain why validation failed
