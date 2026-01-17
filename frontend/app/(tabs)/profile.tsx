@@ -20,6 +20,7 @@ import {
   getScoreColor,
   getScoreLabel,
 } from "../../theme";
+import { StreakBadge } from "../../components/StreakBadge";
 import Constants from "expo-constants";
 
 const APP_VERSION = Constants.expoConfig?.version || "2.4.0";
@@ -215,6 +216,16 @@ export default function Profile() {
             value={user.weight ? `${user.weight} kg` : "—"}
           />
         </View>
+
+        {/* Streak Section */}
+        {authUser?.current_streak && authUser.current_streak > 0 ? (
+          <View style={styles.streakSection}>
+            <StreakBadge
+              currentStreak={authUser.current_streak}
+              longestStreak={authUser.longest_streak}
+            />
+          </View>
+        ) : null}
 
         {/* BMI Card */}
         {bmi && (
@@ -526,6 +537,12 @@ const styles = StyleSheet.create({
     ...textStyles.h4,
     color: colors.text.primary,
     textTransform: "capitalize",
+  },
+
+  // Streak Section
+  streakSection: {
+    marginHorizontal: layout.screenPaddingHorizontal,
+    marginTop: spacing[4],
   },
 
   // BMI Card

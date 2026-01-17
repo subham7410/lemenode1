@@ -220,3 +220,70 @@ async def update_user_tier(uid: str, tier: str) -> Optional[UserProfile]:
     
     logger.info(f"Updated user {uid} tier to: {tier}")
     return await get_user(uid)
+
+
+async def update_streak(uid: str) -> dict:
+    """
+    Update user's scan streak.
+    
+    Logic:
+    - If already scanned today: no change
+    - If scanned yesterday: continue streak (+1)
+    - Otherwise: reset streak to 1
+    
+    Args:
+        uid: Firebase user ID
+        
+    Returns:
+        dict with current_streak, longest_streak, streak_extended (bool)
+    """
+    from datetime import timedelta
+    
+    db = get_firestore_client()
+    doc_ref = db.collection(USERS_COLLECTION).document(uid)
+    doc = doc_ref.get()
+    
+    if not doc.exists:
+        return {"current_streak": 0, "longest_streak": 0, "streak_extended": False}
+    
+    data = doc.to_dict()
+    today = date.today().isoformat()
+    yesterday = (date.today() - timedelta(days=1)).isoformat()
+    
+    streak_last_scan = data.get("streak_last_scan_date")
+    current_streak = data.get("current_streak", 0)
+    longest_streak = data.get("longest_streak", 0)
+    streak_extended = False
+    
+    if streak_last_scan == today:
+        # Already scanned today, no change
+        pass
+    elif streak_last_scan == yesterday:
+        # Scanned yesterday, continue streak
+        current_streak += 1
+        streak_extended = True
+    else:
+        # Streak broken or first scan
+        current_streak = 1
+        streak_extended = current_streak == 1 and streak_last_scan is None
+    
+    # Update longest streak if needed
+    if current_streak > longest_streak:
+        longest_streak = current_streak
+    
+    # Save to database
+    doc_ref.update({
+        "current_streak": current_streak,
+        "longest_streak": longest_streak,
+        "streak_last_scan_date": today,
+        "updated_at": datetime.utcnow()
+    })
+    
+    logger.info(f"Updated streak for {uid}: {current_streak} days (longest: {longest_streak})")
+    
+    return {
+        "current_streak": current_streak,
+        "longest_streak": longest_streak,
+        "streak_extended": streak_extended
+    }
+

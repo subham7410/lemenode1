@@ -39,6 +39,11 @@ class UserProfile(BaseModel):
     scans_today: int = 0
     last_scan_date: Optional[str] = None  # ISO date string
     
+    # Streak tracking
+    current_streak: int = 0  # Current consecutive days with scans
+    longest_streak: int = 0  # Personal best streak
+    streak_last_scan_date: Optional[str] = None  # Last date streak was updated
+    
     # Timestamps
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None

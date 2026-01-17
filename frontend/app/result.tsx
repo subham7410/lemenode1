@@ -244,6 +244,12 @@ export default function Result() {
         {/* Quick Actions */}
         <View style={styles.quickActions}>
           <QuickAction
+            icon="chatbubbles"
+            label="Ask AI"
+            color={colors.primary[500]}
+            onPress={() => router.push("/chat")}
+          />
+          <QuickAction
             icon="heart"
             label="Health"
             color={colors.error}

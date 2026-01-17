@@ -36,9 +36,10 @@ from routes.users import router as users_router
 from routes.scans import router as scans_router
 from routes.subscription import router as subscription_router
 from routes.announcements import router as announcements_router
+from routes.chat import router as chat_router
 
 # DB operations
-from db.users import get_user, increment_scan_count, get_or_create_user
+from db.users import get_user, increment_scan_count, get_or_create_user, update_streak
 from db.scans import save_scan
 from db.tiers import can_scan, get_user_usage
 
@@ -73,6 +74,7 @@ app.include_router(users_router)
 app.include_router(scans_router)
 app.include_router(subscription_router)
 app.include_router(announcements_router)
+app.include_router(chat_router)
 
 # Legacy rate limiter (fallback for unauthenticated requests)
 rate_limit_store: dict = {}
@@ -213,6 +215,8 @@ async def analyze(
             try:
                 await save_scan(user_id, cached_result, image_bytes)
                 await increment_scan_count(user_id)
+                streak_info = await update_streak(user_id)
+                cached_result["streak"] = streak_info
             except Exception as e:
                 logger.warning(f"Failed to save cached scan: {e}")
         
@@ -241,7 +245,9 @@ async def analyze(
             try:
                 scan_record = await save_scan(user_id, analysis, image_bytes)
                 await increment_scan_count(user_id)
+                streak_info = await update_streak(user_id)
                 analysis["_scan_id"] = scan_record.id
+                analysis["streak"] = streak_info
             except Exception as e:
                 logger.warning(f"Failed to save scan: {e}")
 

@@ -24,8 +24,10 @@ import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 
 import { useAnalysis } from "../../context/AnalysisContext";
+import { useAuth } from "../../context/AuthContext";
 import { Button } from "../../components/ui";
 import { AnnouncementBanner } from "../../components/AnnouncementBanner";
+import { StreakBadge } from "../../components/StreakBadge";
 import {
   colors,
   textStyles,
@@ -42,6 +44,7 @@ const API_URL = "https://lemenode-backend-466053387222.asia-south1.run.app";
 export default function Upload() {
   const router = useRouter();
   const { user, setAnalysis, analysis } = useAnalysis();
+  const { user: authUser } = useAuth();
 
   const [image, setImage] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -227,9 +230,18 @@ export default function Upload() {
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
-          {/* Header */}
+          {/* Header with Streak Badge */}
           <View style={styles.header}>
-            <Text style={styles.title}>Skin Analysis</Text>
+            <View style={styles.headerRow}>
+              <Text style={styles.title}>Skin Analysis</Text>
+              {authUser?.current_streak ? (
+                <StreakBadge
+                  currentStreak={authUser.current_streak}
+                  compact
+                  onPress={() => router.push("/(tabs)/profile")}
+                />
+              ) : null}
+            </View>
             <Text style={styles.subtitle}>
               Upload a clear face photo for AI-powered analysis
             </Text>
@@ -399,10 +411,15 @@ const styles = StyleSheet.create({
   header: {
     marginBottom: spacing[4],
   },
+  headerRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: spacing[1],
+  },
   title: {
     ...textStyles.h2,
     color: colors.text.primary,
-    marginBottom: spacing[1],
   },
   subtitle: {
     ...textStyles.body,

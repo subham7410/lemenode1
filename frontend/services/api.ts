@@ -176,6 +176,30 @@ export const apiService = {
     async deleteAccount() {
         await api.delete("/users/me");
     },
+
+    /**
+     * Send chat message to AI assistant
+     */
+    async sendChatMessage(
+        message: string,
+        scanContext?: any,
+        history?: { role: string; content: string }[]
+    ) {
+        const response = await api.post("/chat", {
+            message,
+            scan_context: scanContext,
+            history: history || [],
+        });
+        return response.data;
+    },
+
+    /**
+     * Get initial chat suggestions based on latest scan
+     */
+    async getChatSuggestions() {
+        const response = await api.get("/chat/suggestions");
+        return response.data;
+    },
 };
 
 export default api;

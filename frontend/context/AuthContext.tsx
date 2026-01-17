@@ -36,6 +36,9 @@ export type UserProfile = {
     height?: number | null;
     weight?: number | null;
     diet?: string | null;
+    // Streak tracking
+    current_streak?: number;
+    longest_streak?: number;
 };
 
 // Auth context type

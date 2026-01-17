@@ -122,159 +122,171 @@ def analyze_skin_with_gemini(
         optimized_image = optimize_image(image_bytes)
 
 
-        # Build comprehensive prompt with specific instructions
+        # Calculate BMI for health context
+        try:
+            height_m = float(user.get('height', 170)) / 100
+            weight_kg = float(user.get('weight', 70))
+            bmi = round(weight_kg / (height_m ** 2), 1)
+            if bmi < 18.5:
+                bmi_category = "underweight"
+            elif bmi < 25:
+                bmi_category = "healthy weight"
+            elif bmi < 30:
+                bmi_category = "overweight"
+            else:
+                bmi_category = "obese"
+        except:
+            bmi = None
+            bmi_category = "unknown"
+        
+        # Get age for context
+        age = int(user.get('age', 25))
+        if age < 20:
+            age_group = "teenager"
+        elif age < 30:
+            age_group = "young adult in their 20s"
+        elif age < 40:
+            age_group = "adult in their 30s"
+        elif age < 50:
+            age_group = "adult in their 40s"
+        else:
+            age_group = "mature adult over 50"
+        
+        # Build FREE-FORM prompt - no examples, let AI be creative and honest
         prompt = f"""
-You are Dr. Sarah Chen, a board-certified dermatologist with 15 years of experience in skincare analysis and personalized treatment plans. You have expertise in understanding how lifestyle, diet, and environmental factors affect skin health.
+You are analyzing this person's skin as an expert dermatologist. Be BRUTALLY HONEST and HIGHLY SPECIFIC about what you observe.
 
-ANALYZE THIS PERSON'S FACIAL SKIN IN DETAIL:
+PATIENT INFORMATION:
+- Age: {user.get('age', 'Unknown')} years old ({age_group})
+- Gender: {user.get('gender', 'Unknown')}  
+- Height: {user.get('height', 'Unknown')} cm
+- Weight: {user.get('weight', 'Unknown')} kg
+- BMI: {bmi} ({bmi_category})
+- Diet: {user.get('diet', 'Unknown')}
+- Ethnicity: {user.get('ethnicity', 'Unknown')}
 
-PATIENT PROFILE:
-• Age: {user.get('age', 'Not specified')} years old
-• Gender: {user.get('gender', 'Not specified')}
-• Height: {user.get('height', 'Not specified')} cm
-• Weight: {user.get('weight', 'Not specified')} kg
-• Dietary Preference: {user.get('diet', 'Not specified')}
-• Ethnicity: {user.get('ethnicity', 'Not specified')}
+YOUR MISSION:
+Look at this face image and tell me EXACTLY what you see. Don't sugarcoat. Don't give generic advice. Tell this person what THEY specifically need to know about THEIR skin.
 
-CRITICAL ANALYSIS INSTRUCTIONS:
-1. CAREFULLY examine the actual image - look at skin texture, tone, pores, any blemishes, oil levels, hydration
-2. Consider the person's age, gender, and ethnicity when assessing what's normal vs concerning
-3. Be SPECIFIC about what you see - mention exact locations (forehead, cheeks, chin, nose, etc.)
-4. Provide ACTIONABLE advice based on their diet preference and lifestyle
-5. Make recommendations that are PERSONALIZED to this individual, not generic
-6. Be honest but encouraging - focus on achievable improvements
+OBSERVE AND DESCRIBE:
+1. What's the first thing you notice about their skin? (good or bad)
+2. Examine each zone: forehead, T-zone, nose, cheeks, chin, jawline, under-eyes
+3. Rate the skin honestly - if it's average, say average. If it needs work, say so.
+4. What are the TOP 3 things this person should focus on RIGHT NOW?
+5. What products/ingredients would actually help THIS person?
+6. What foods should THIS person eat based on their diet preference ({user.get('diet', 'standard')}) and skin issues?
+7. What lifestyle changes would make the biggest difference for them?
+8. What colors/styles would flatter their specific skin tone?
 
-DETAILED OBSERVATION CHECKLIST:
-- Skin texture: smooth, rough, bumpy, uneven?
-- Pore visibility: enlarged on T-zone, cheeks?
-- Oil production: shiny areas, matte areas?
-- Hydration level: dry patches, flaky areas?
-- Blemishes: location, severity, type (acne, blackheads, whiteheads)?
-- Pigmentation: even tone, dark spots, redness?
-- Fine lines or wrinkles: where visible?
-- Overall complexion: bright, dull, tired-looking?
+BE CREATIVE with your recommendations. Think outside the box. Don't just say "drink water" - give specific, actionable advice unique to this person.
 
-AGE-SPECIFIC CONSIDERATIONS:
-- For teens (13-19): Focus on acne prevention, oil control, building good habits
-- For 20s: Preventive care, sun protection, managing stress-related breakouts
-- For 30s: Early anti-aging, hydration, addressing sun damage
-- For 40s+: Anti-aging, firmness, deeper hydration, spot treatment
-
-RETURN ONLY VALID JSON (NO MARKDOWN, NO EXPLANATION):
+RETURN STRICT JSON FORMAT (no markdown, no commentary):
 
 {{
-  "skin_type": "oily|dry|normal|combination",
-  "skin_tone": "fair|medium|olive|tan|deep",
-  "overall_condition": "excellent|good|fair|needs attention",
+  "skin_type": "one of: oily, dry, normal, combination, sensitive",
+  "skin_tone": "one of: fair, light, medium, olive, tan, deep, dark",
+  "overall_condition": "one of: excellent, good, fair, poor, needs_attention",
+  
+  "first_impression": "What's the first thing that stands out about this skin? Be honest.",
   
   "factor_ratings": {{
-    "texture": 0-100,
-    "hydration": 0-100,
-    "clarity": 0-100,
-    "tone": 0-100,
-    "aging": 0-100
+    "texture": <0-100 honest score>,
+    "hydration": <0-100 honest score>,
+    "clarity": <0-100 honest score>,
+    "tone": <0-100 honest score>,
+    "aging": <0-100 age-appropriate score>
   }},
   
   "factor_notes": {{
-    "texture": "BRIEF note on texture (e.g., 'Mostly smooth with visible pores on nose')",
-    "hydration": "BRIEF note on hydration (e.g., 'Well-hydrated, slight dryness on cheeks')",
-    "clarity": "BRIEF note on clarity (e.g., 'Clear with 2-3 small whiteheads on chin')",
-    "tone": "BRIEF note on tone (e.g., 'Even tone, minor redness around nose')",
-    "aging": "BRIEF note on aging (e.g., 'No visible lines, appropriate for age')"
+    "texture": "Describe what you see - smooth, rough, pores, bumps? Where exactly?",
+    "hydration": "Is the skin thirsty? Oily? Well-balanced? Which areas?",
+    "clarity": "Any blemishes, spots, acne, blackheads? Be specific about location and severity",
+    "tone": "Is the color even? Redness? Dark spots? Dullness? Where?",
+    "aging": "Any lines, wrinkles, sagging? Appropriate for their age?"
   }},
   
   "visible_issues": [
-    "SPECIFIC observation 1 with exact location (e.g., 'Visible enlarged pores on nose and center forehead')",
-    "SPECIFIC observation 2 (e.g., 'Mild oiliness on T-zone with some shine on nose')",
-    "SPECIFIC observation 3 (e.g., 'Few small whiteheads visible on left cheek area')",
-    "SPECIFIC observation 4 if applicable"
+    "List each issue you observe - be specific about what and where. Include 3-6 items.",
+    "Use your own words, describe what you actually see in THIS face."
   ],
   
   "positive_aspects": [
-    "SPECIFIC positive 1 (e.g., 'Even skin tone across forehead and cheeks')",
-    "SPECIFIC positive 2 (e.g., 'Good hydration visible around eye area')",
-    "SPECIFIC positive 3 (e.g., 'Minimal signs of sun damage for age')"
+    "What's working well? Every skin has good points - find them.",
+    "Be genuine, not just generic compliments."
+  ],
+  
+  "priority_fixes": [
+    "The #1 thing this person should address first",
+    "Second priority",
+    "Third priority"
   ],
   
   "recommendations": [
-    "ACTIONABLE recommendation 1 with product type and reason (e.g., 'Use oil-free salicylic acid cleanser twice daily to control T-zone oiliness and prevent clogged pores')",
-    "ACTIONABLE recommendation 2 (e.g., 'Apply lightweight hyaluronic acid serum before moisturizer to boost hydration without adding oil')",
-    "ACTIONABLE recommendation 3 (e.g., 'Use clay mask once weekly specifically on nose and forehead to minimize pore appearance')",
-    "ACTIONABLE recommendation 4 (e.g., 'Switch to gel-based moisturizer instead of cream to avoid excess shine')",
-    "ACTIONABLE recommendation 5 with timing (e.g., 'Apply vitamin C serum in morning before sunscreen to brighten and protect')"
+    "5-7 specific product/ingredient recommendations with reasoning",
+    "Tailor to their age, skin type, and concerns",
+    "Include morning and evening suggestions",
+    "Be specific about ingredient names (niacinamide, retinol, etc.)"
   ],
   
   "lifestyle_tips": [
-    "SPECIFIC tip 1 related to their age/diet (e.g., 'As a vegetarian, ensure adequate zinc intake through pumpkin seeds and chickpeas for skin healing')",
-    "SPECIFIC tip 2 (e.g., 'Change pillowcase every 2-3 days to reduce bacteria transfer to cheek area')",
-    "SPECIFIC tip 3 (e.g., 'Drink water immediately after waking to flush toxins before breakfast')",
-    "SPECIFIC tip 4 (e.g., 'Avoid touching face, especially T-zone, during day to prevent oil transfer')",
-    "SPECIFIC tip 5 (e.g., 'Get 7-8 hours sleep consistently as skin repair happens during deep sleep cycles')"
+    "4-6 lifestyle changes specific to their profile",
+    "Consider their diet preference, BMI, and age",
+    "Be practical and actionable"
   ],
   
   "food": {{
     "eat_more": [
-      "SPECIFIC food 1 with skin benefit (e.g., 'Blueberries and strawberries - high in antioxidants to fight free radicals and improve skin texture')",
-      "SPECIFIC food 2 (e.g., 'Walnuts and flaxseeds - omega-3 fatty acids reduce inflammation and support skin barrier')",
-      "SPECIFIC food 3 (e.g., 'Sweet potatoes - beta-carotene acts as natural sunblock and improves skin tone')",
-      "SPECIFIC food 4 (e.g., 'Greek yogurt - probiotics balance gut health which directly affects skin clarity')",
-      "SPECIFIC food 5 (e.g., 'Bell peppers - vitamin C boosts collagen production for firmer skin')",
-      "SPECIFIC food 6 (e.g., 'Green tea - EGCG antioxidants reduce redness and inflammation')",
-      "SPECIFIC food 7 related to their diet preference"
+      "5-7 foods that would specifically help THIS person's skin issues",
+      "Must respect their diet preference: {user.get('diet', 'no restrictions')}",
+      "Explain WHY each food helps their specific concerns"
     ],
-    "limit": [
-      "SPECIFIC food 1 with reason (e.g., 'White bread and pastries - high glycemic foods spike insulin causing increased oil production')",
-      "SPECIFIC food 2 (e.g., 'Milk and cheese - dairy can trigger hormonal acne in some people')",
-      "SPECIFIC food 3 (e.g., 'Chips and fried foods - trans fats cause inflammation and clogged pores')",
-      "SPECIFIC food 4 (e.g., 'Soda and energy drinks - sugar causes glycation damaging collagen and elastin')",
-      "SPECIFIC food 5 (e.g., 'Excessive coffee - over 2 cups daily can dehydrate skin and increase cortisol')"
+    "avoid": [
+      "3-5 foods to limit and why - relate to their specific skin issues"
     ]
   }},
   
   "health": {{
     "daily_habits": [
-      "SPECIFIC habit 1 with time (e.g., 'Cleanse face within 1 hour of waking to remove overnight oil buildup')",
-      "SPECIFIC habit 2 (e.g., 'Apply SPF 50 sunscreen every morning, even indoors, reapply every 2 hours if outside')",
-      "SPECIFIC habit 3 (e.g., 'Remove makeup with oil-based cleanser before water-based cleanser for complete removal')",
-      "SPECIFIC habit 4 (e.g., 'Pat face dry with clean towel - never rub which can irritate and spread bacteria')",
-      "SPECIFIC habit 5 (e.g., 'Apply products in order: cleanser → toner → serum → moisturizer → sunscreen')"
+      "5 daily habits tailored to their skin type and concerns"
     ],
-    "routine": [
-      "MORNING ROUTINE: Lukewarm water splash → gentle foaming cleanser → hydrating toner → vitamin C serum → lightweight moisturizer → SPF 50 sunscreen",
-      "EVENING ROUTINE: Oil-based makeup remover → gentle foaming cleanser → exfoliating toner (3x weekly) → treatment serum → night moisturizer → spot treatment if needed",
-      "WEEKLY TREATMENTS: Clay mask on T-zone (Sunday), gentle exfoliation (Wednesday, Saturday), overnight hydrating mask (Friday)",
-      "MONTHLY: Evaluate progress, adjust products if needed, take progress photos in same lighting"
-    ]
+    "morning_routine": "A complete morning routine with specific product types",
+    "evening_routine": "A complete evening routine with specific product types",
+    "weekly_treatments": "1-2 weekly treatments for their needs"
   }},
   
   "style": {{
-    "clothing": [
-      "SPECIFIC clothing 1 for their skin tone (e.g., 'Warm coral and peach tones complement your medium skin tone and make complexion glow')",
-      "SPECIFIC clothing 2 (e.g., 'Soft blues and teals enhance natural skin brightness without washing out')",
-      "SPECIFIC clothing 3 (e.g., 'Avoid heavy foundations and opt for breathable cotton fabrics that don't trap oil against skin')",
-      "SPECIFIC clothing 4 (e.g., 'Choose scarves and collars that don't directly touch face to prevent breakouts from fabric friction')"
+    "best_colors": [
+      "3-4 specific colors that would complement their skin tone"
+    ],
+    "avoid_colors": [
+      "2-3 colors that might wash them out or clash"
+    ],
+    "clothing_tips": [
+      "2-3 clothing fabric or style tips related to skin health"
     ],
     "accessories": [
-      "SPECIFIC accessory 1 (e.g., 'Oversized UV400 sunglasses to protect delicate eye area from UV damage and squinting lines')",
-      "SPECIFIC accessory 2 (e.g., 'Silk or satin hair ties instead of rubber bands to prevent breakage and reduce facial oil transfer')",
-      "SPECIFIC accessory 3 (e.g., 'Wide-brim hat for outdoor activities to minimize direct sun exposure on face')"
+      "2-3 accessory recommendations"
     ]
-  }}
+  }},
+  
+  "honest_assessment": "Give a straight-talk summary. What's the real situation? What should they prioritize? Don't be mean, but be real."
 }}
 
-SCORING GUIDE (Be realistic and honest):
-- 85-95: Exceptional skin with minimal concerns, mostly preventive care needed
-- 75-84: Good skin health with minor issues, targeted improvements recommended  
-- 65-74: Fair condition with noticeable concerns, consistent routine needed
-- 50-64: Needs attention with multiple issues, comprehensive approach required
+SCORING HONESTLY:
+- 90-100: Exceptional skin, rarely give this score
+- 75-89: Good skin with minor issues
+- 60-74: Average skin with noticeable concerns
+- 45-59: Below average, needs consistent work
+- Below 45: Significant concerns, may need professional help
 
-REMEMBER: 
-- Base your analysis on what you ACTUALLY SEE in the image
-- Be specific about locations and observations
-- Consider their age, gender, diet when making recommendations
-- Provide actionable advice, not generic tips
-- Be encouraging but honest
-- Every person's skin is unique - avoid cookie-cutter responses
+CRITICAL RULES:
+1. DO NOT copy any example text - write everything fresh based on what you SEE
+2. Be SPECIFIC - if you see an issue on the left cheek, say "left cheek"
+3. Be HONEST - false positivity doesn't help anyone
+4. Be USEFUL - every recommendation should be actionable TODAY
+5. Be CREATIVE - don't repeat the same advice everyone gives
+6. PERSONALIZE - use their age, diet, BMI in your recommendations
+7. NO PLACEHOLDERS - every field must have real, specific content
 """
 
         # Call Gemini API with retry logic
@@ -306,7 +318,10 @@ REMEMBER:
 
 
 def validate_and_fix_response(data: Dict[str, Any], user: Dict[str, Any]) -> Dict[str, Any]:
-    """Ensure response has all required fields with quality content"""
+    """
+    Validate response structure and ensure backwards compatibility with frontend.
+    Maps new field names to old ones that frontend expects.
+    """
     
     # Import skin scorer
     from ai.skin_scorer import score_from_analysis
@@ -318,78 +333,120 @@ def validate_and_fix_response(data: Dict[str, Any], user: Dict[str, Any]) -> Dic
     # Set score as object with breakdown
     data["score"] = score_result
     
-    # Ensure minimum quality of content
-    if not data.get("visible_issues") or len(data.get("visible_issues", [])) < 2:
-        data["visible_issues"] = [
-            "Initial assessment shows areas that could benefit from targeted care",
-            "Skin analysis indicates room for improvement with proper routine"
-        ]
-    
-    if not data.get("positive_aspects") or len(data.get("positive_aspects", [])) < 2:
-        data["positive_aspects"] = [
-            "Overall healthy skin foundation to build upon",
-            "Good potential for improvement with consistent care"
-        ]
-    
-    if not data.get("recommendations") or len(data.get("recommendations", [])) < 4:
-        data["recommendations"] = [
-            "Establish a consistent cleansing routine morning and night",
-            "Use appropriate moisturizer for your skin type",
-            "Apply broad-spectrum SPF 30+ sunscreen daily",
-            "Stay well-hydrated with 8+ glasses of water daily"
-        ]
-    
-    # Ensure all required nested fields exist
-    defaults = {
-        "skin_type": "combination",
-        "skin_tone": "medium",
-        "overall_condition": "good",
-        "food": {
-            "eat_more": [
-                "Leafy greens rich in vitamins A and C",
-                "Berries packed with antioxidants",
-                "Nuts and seeds for healthy fats",
-                "Fatty fish or plant-based omega-3 sources",
-                "Colorful vegetables for diverse nutrients"
-            ],
-            "limit": [
-                "Processed foods high in sodium",
-                "Excessive sugar and refined carbs",
-                "Fried and greasy foods"
-            ]
-        },
-        "health": {
-            "daily_habits": [
-                "Cleanse face twice daily with appropriate cleanser",
-                "Apply sunscreen every morning as final step",
-                "Remove makeup thoroughly before bed",
-                "Moisturize while skin is still slightly damp"
-            ],
-            "routine": [
-                "Morning: Cleanse → Tone → Serum → Moisturize → Sunscreen",
-                "Evening: Cleanse → Exfoliate (2-3x weekly) → Treat → Moisturize",
-                "Weekly: Deep cleansing mask or treatment"
-            ]
-        },
-        "style": {
-            "clothing": [
-                "Colors that complement your natural skin tone",
-                "Breathable, natural fabrics like cotton",
-                "Sun-protective clothing for outdoor activities"
-            ],
-            "accessories": [
-                "Quality UV-blocking sunglasses",
-                "Wide-brim hat for sun protection"
-            ]
-        }
+    # Ensure required string fields have at least empty defaults (but don't override AI content)
+    required_strings = {
+        "skin_type": "unknown",
+        "skin_tone": "unknown", 
+        "overall_condition": "unknown",
+        "first_impression": "",
+        "honest_assessment": ""
     }
     
-    for key, default_value in defaults.items():
-        if key not in data or not data[key]:
-            data[key] = default_value
-        elif isinstance(default_value, dict):
-            for subkey, subdefault in default_value.items():
-                if subkey not in data[key] or not data[key][subkey]:
-                    data[key][subkey] = subdefault
+    for key, default in required_strings.items():
+        if key not in data or data[key] is None:
+            data[key] = default
     
+    # Ensure required arrays exist (but don't override AI content with generic text)
+    required_arrays = [
+        "visible_issues", "positive_aspects", "recommendations", 
+        "lifestyle_tips", "priority_fixes"
+    ]
+    
+    for key in required_arrays:
+        if key not in data or not isinstance(data.get(key), list):
+            data[key] = []
+    
+    # Ensure nested objects exist with proper structure
+    if "factor_ratings" not in data or not isinstance(data.get("factor_ratings"), dict):
+        data["factor_ratings"] = {
+            "texture": 50,
+            "hydration": 50,
+            "clarity": 50,
+            "tone": 50,
+            "aging": 50
+        }
+    
+    if "factor_notes" not in data or not isinstance(data.get("factor_notes"), dict):
+        data["factor_notes"] = {}
+    
+    # ============================================================
+    # FOOD SECTION - Ensure both old and new field names work
+    # ============================================================
+    if "food" not in data or not isinstance(data.get("food"), dict):
+        data["food"] = {"eat_more": [], "avoid": [], "limit": []}
+    else:
+        if "eat_more" not in data["food"]:
+            data["food"]["eat_more"] = []
+        
+        # Handle avoid/limit - populate both for compatibility
+        avoid_items = data["food"].get("avoid", []) or []
+        limit_items = data["food"].get("limit", []) or []
+        
+        # Merge and set both fields
+        all_avoid = avoid_items if avoid_items else limit_items
+        data["food"]["avoid"] = all_avoid
+        data["food"]["limit"] = all_avoid  # Frontend expects "limit"
+    
+    # ============================================================
+    # HEALTH SECTION - Ensure routine array exists for frontend
+    # ============================================================
+    if "health" not in data or not isinstance(data.get("health"), dict):
+        data["health"] = {
+            "daily_habits": [],
+            "morning_routine": "",
+            "evening_routine": "",
+            "weekly_treatments": "",
+            "routine": []
+        }
+    else:
+        if "daily_habits" not in data["health"]:
+            data["health"]["daily_habits"] = []
+        
+        # Build routine array from new fields for frontend compatibility
+        routine = []
+        if data["health"].get("morning_routine"):
+            routine.append(f"MORNING: {data['health']['morning_routine']}")
+        if data["health"].get("evening_routine"):
+            routine.append(f"EVENING: {data['health']['evening_routine']}")
+        if data["health"].get("weekly_treatments"):
+            routine.append(f"WEEKLY: {data['health']['weekly_treatments']}")
+        
+        # If AI returned old format, use it; otherwise use built routine
+        if "routine" not in data["health"] or not data["health"]["routine"]:
+            data["health"]["routine"] = routine if routine else [
+                "Morning: Cleanse → Moisturize → Sunscreen",
+                "Evening: Cleanse → Treat → Moisturize"
+            ]
+    
+    # ============================================================
+    # STYLE SECTION - Ensure clothing array exists for frontend
+    # ============================================================
+    if "style" not in data or not isinstance(data.get("style"), dict):
+        data["style"] = {
+            "best_colors": [],
+            "avoid_colors": [],
+            "clothing_tips": [],
+            "clothing": [],
+            "accessories": []
+        }
+    else:
+        # Ensure all fields exist
+        for field in ["best_colors", "avoid_colors", "clothing_tips", "accessories"]:
+            if field not in data["style"]:
+                data["style"][field] = []
+        
+        # Build clothing array for frontend compatibility
+        clothing = []
+        if data["style"].get("best_colors"):
+            clothing.append(f"Best colors: {', '.join(data['style']['best_colors'][:3])}")
+        if data["style"].get("avoid_colors"):
+            clothing.append(f"Avoid colors: {', '.join(data['style']['avoid_colors'][:2])}")
+        if data["style"].get("clothing_tips"):
+            clothing.extend(data["style"]["clothing_tips"])
+        
+        # If AI returned old format, use it; otherwise use built clothing
+        if "clothing" not in data["style"] or not data["style"]["clothing"]:
+            data["style"]["clothing"] = clothing if clothing else data["style"].get("clothing_tips", [])
+    
+    logger.info(f"Validated response - Score: {score_result.get('total', 'N/A')}")
     return data
