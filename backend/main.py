@@ -37,6 +37,8 @@ from routes.scans import router as scans_router
 from routes.subscription import router as subscription_router
 from routes.announcements import router as announcements_router
 from routes.chat import router as chat_router
+from routes.reports import router as reports_router
+from routes.food import router as food_router
 
 # DB operations
 from db.users import get_user, increment_scan_count, get_or_create_user, update_streak
@@ -75,6 +77,8 @@ app.include_router(scans_router)
 app.include_router(subscription_router)
 app.include_router(announcements_router)
 app.include_router(chat_router)
+app.include_router(reports_router)
+app.include_router(food_router)
 
 # Legacy rate limiter (fallback for unauthenticated requests)
 rate_limit_store: dict = {}

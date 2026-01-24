@@ -200,6 +200,74 @@ export const apiService = {
         const response = await api.get("/chat/suggestions");
         return response.data;
     },
+
+    /**
+     * Get weekly health report
+     */
+    async getWeeklyReport() {
+        const response = await api.get("/reports/weekly");
+        return response.data;
+    },
+
+    // ============================================
+    // FOOD TRACKING
+    // ============================================
+
+    /**
+     * Log a food entry by uploading a photo
+     */
+    async logFood(imageUri: string) {
+        const formData = new FormData();
+        formData.append("image", {
+            uri: imageUri,
+            type: "image/jpeg",
+            name: "food.jpg",
+        } as any);
+
+        const response = await api.post("/food/log", formData, {
+            headers: {
+                "Content-Type": "multipart/form-data",
+            },
+        });
+        return response.data;
+    },
+
+    /**
+     * Get food logs for a specific date
+     */
+    async getFoodLogs(date?: string, limit = 50) {
+        const params: any = { limit };
+        if (date) params.date_str = date;
+
+        const response = await api.get("/food/logs", { params });
+        return response.data;
+    },
+
+    /**
+     * Get daily food summary with AI verdict
+     */
+    async getDailySummary(date?: string) {
+        const params: any = {};
+        if (date) params.date_str = date;
+
+        const response = await api.get("/food/daily-summary", { params });
+        return response.data;
+    },
+
+    /**
+     * Get food history for the last N days
+     */
+    async getFoodHistory(days = 7) {
+        const response = await api.get("/food/history", { params: { days } });
+        return response.data;
+    },
+
+    /**
+     * Delete a food log entry
+     */
+    async deleteFoodLog(logId: string) {
+        await api.delete(`/food/log/${logId}`);
+    },
 };
 
 export default api;

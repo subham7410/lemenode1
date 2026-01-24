@@ -1,15 +1,27 @@
 /**
- * Food Screen - Redesigned with Lemenode Design System
- * Personalized nutrition recommendations with interactive items
+ * Food Screen - Redesigned with Food Tracking
+ * Upload photos of meals for AI analysis and tracking
  */
 
-import { ScrollView, Text, View, StyleSheet, Pressable, Animated } from "react-native";
+import { useState, useEffect, useCallback } from "react";
+import {
+  ScrollView,
+  Text,
+  View,
+  StyleSheet,
+  Pressable,
+  ActivityIndicator,
+  Alert,
+  RefreshControl,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
-import { useAnalysis } from "../../context/AnalysisContext";
-import ProductCard from "../../components/ProductCard";
 import { Ionicons } from "@expo/vector-icons";
-import { useState, useRef } from "react";
+import { useRouter } from "expo-router";
+import * as ImagePicker from "expo-image-picker";
+import FoodLogCard from "../../components/FoodLogCard";
+import { apiService } from "../../services/api";
+import { useAuth } from "../../context/AuthContext";
 import {
   colors,
   textStyles,
@@ -19,112 +31,173 @@ import {
   shadows,
 } from "../../theme";
 
-// Food item with expandable details
-interface FoodItemProps {
-  item: string;
-  type: "good" | "bad";
-  index: number;
+interface FoodLog {
+  id: string;
+  food_name: string;
+  category: "healthy" | "moderate" | "unhealthy";
+  health_score: number;
+  calories: number;
+  macros: { protein: number; carbs: number; fat: number };
+  verdict: string;
+  logged_at: string;
 }
 
-function FoodItem({ item, type, index }: FoodItemProps) {
-  const [expanded, setExpanded] = useState(false);
-  const animatedHeight = useRef(new Animated.Value(0)).current;
-
-  const toggleExpand = () => {
-    Animated.timing(animatedHeight, {
-      toValue: expanded ? 0 : 1,
-      duration: 200,
-      useNativeDriver: false,
-    }).start();
-    setExpanded(!expanded);
-  };
-
-  const isGood = type === "good";
-  const iconName = isGood ? "checkmark-circle" : "close-circle";
-  const iconColor = isGood ? colors.accent[500] : colors.error;
-  const bgColor = isGood ? colors.accent[50] : colors.errorLight;
-  const borderColor = isGood ? colors.accent[200] : colors.error;
-
-  // Extract food name and benefit if format is "Food - Benefit"
-  const parts = item.split(" - ");
-  const foodName = parts[0];
-  const benefit = parts[1] || null;
-
-  return (
-    <Pressable onPress={toggleExpand}>
-      <Animated.View
-        style={[
-          styles.foodItem,
-          {
-            backgroundColor: bgColor,
-            borderLeftColor: borderColor,
-            transform: [
-              {
-                scale: animatedHeight.interpolate({
-                  inputRange: [0, 1],
-                  outputRange: [1, 1.02],
-                }),
-              },
-            ],
-          },
-        ]}
-      >
-        <View style={styles.foodItemHeader}>
-          <View style={[styles.foodIcon, { backgroundColor: isGood ? colors.accent[100] : colors.errorLight }]}>
-            <Ionicons name={iconName} size={20} color={iconColor} />
-          </View>
-          <View style={styles.foodContent}>
-            <Text style={styles.foodName}>{foodName}</Text>
-            {benefit && !expanded && (
-              <Text style={styles.foodBenefitPreview} numberOfLines={1}>
-                {benefit}
-              </Text>
-            )}
-          </View>
-          <Ionicons
-            name={expanded ? "chevron-up" : "chevron-down"}
-            size={20}
-            color={colors.neutral[400]}
-          />
-        </View>
-
-        {expanded && benefit && (
-          <View style={styles.foodExpanded}>
-            <Text style={styles.foodBenefit}>{benefit}</Text>
-          </View>
-        )}
-      </Animated.View>
-    </Pressable>
-  );
-}
-
-// Empty state component
-function EmptyState({ icon, message }: { icon: string; message: string }) {
-  return (
-    <View style={styles.emptyState}>
-      <View style={styles.emptyIcon}>
-        <Ionicons name={icon as any} size={40} color={colors.neutral[300]} />
-      </View>
-      <Text style={styles.emptyText}>{message}</Text>
-      <Text style={styles.emptyHint}>Complete your skin analysis to get personalized recommendations</Text>
-    </View>
-  );
+interface DailyStats {
+  calories: number;
+  healthScore: number;
+  mealsLogged: number;
 }
 
 export default function Food() {
-  const { analysis } = useAnalysis();
+  const router = useRouter();
+  const { user } = useAuth();
+  const [logs, setLogs] = useState<FoodLog[]>([]);
+  const [stats, setStats] = useState<DailyStats>({ calories: 0, healthScore: 0, mealsLogged: 0 });
+  const [loading, setLoading] = useState(true);
+  const [uploading, setUploading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
 
-  const eatMore: string[] = analysis?.food?.eat_more ?? [];
-  const limit: string[] = analysis?.food?.limit ?? [];
-  const hasData = eatMore.length > 0 || limit.length > 0;
+  const fetchTodaysData = useCallback(async () => {
+    // Don't fetch if not logged in
+    if (!user) {
+      setLoading(false);
+      setRefreshing(false);
+      return;
+    }
+
+    try {
+      const today = new Date().toISOString().split("T")[0];
+      const [logsData, summaryData] = await Promise.all([
+        apiService.getFoodLogs(today),
+        apiService.getDailySummary(today),
+      ]);
+
+      setLogs(logsData.logs || []);
+      setStats({
+        calories: summaryData.totals?.calories || 0,
+        healthScore: summaryData.health_score || 0,
+        mealsLogged: summaryData.meals_logged || 0,
+      });
+    } catch (err: any) {
+      console.error("Failed to fetch food data:", err);
+      // Don't show error for 401 (not logged in)
+      if (err.response?.status !== 401) {
+        // Silent fail for initial load, just reset to empty state
+        setLogs([]);
+        setStats({ calories: 0, healthScore: 0, mealsLogged: 0 });
+      }
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, [user]);
+
+  useEffect(() => {
+    fetchTodaysData();
+  }, [fetchTodaysData]);
+
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    fetchTodaysData();
+  }, [fetchTodaysData]);
+
+  const handleLogFood = async (source: "camera" | "gallery") => {
+    try {
+      let result;
+
+      if (source === "camera") {
+        const permission = await ImagePicker.requestCameraPermissionsAsync();
+        if (!permission.granted) {
+          Alert.alert("Permission Required", "Camera access is needed to log food");
+          return;
+        }
+        result = await ImagePicker.launchCameraAsync({
+          mediaTypes: ImagePicker.MediaTypeOptions.Images,
+          quality: 0.8,
+          allowsEditing: true,
+          aspect: [4, 3],
+        });
+      } else {
+        const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+        if (!permission.granted) {
+          Alert.alert("Permission Required", "Gallery access is needed to log food");
+          return;
+        }
+        result = await ImagePicker.launchImageLibraryAsync({
+          mediaTypes: ImagePicker.MediaTypeOptions.Images,
+          quality: 0.8,
+          allowsEditing: true,
+          aspect: [4, 3],
+        });
+      }
+
+      if (result.canceled || !result.assets?.[0]?.uri) {
+        return;
+      }
+
+      setUploading(true);
+
+      const response = await apiService.logFood(result.assets[0].uri);
+
+      if (response.success) {
+        // Show the analysis result
+        const analysis = response.analysis;
+        Alert.alert(
+          `${analysis.food_name}`,
+          `Score: ${analysis.health_score}/10 • ${analysis.calories} cal\n\n${analysis.verdict}`,
+          [{ text: "Got it!", style: "default" }]
+        );
+
+        // Refresh the list
+        fetchTodaysData();
+      }
+    } catch (err: any) {
+      console.error("Failed to log food:", err);
+      Alert.alert("Error", err.message || "Failed to analyze food. Please try again.");
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleDeleteLog = async (logId: string) => {
+    try {
+      await apiService.deleteFoodLog(logId);
+      setLogs(logs.filter((log) => log.id !== logId));
+      fetchTodaysData(); // Refresh stats
+    } catch (err) {
+      console.error("Failed to delete log:", err);
+      Alert.alert("Error", "Failed to delete entry");
+    }
+  };
+
+  const showUploadOptions = () => {
+    Alert.alert(
+      "Log Your Meal",
+      "Take a photo or choose from gallery",
+      [
+        { text: "Cancel", style: "cancel" },
+        { text: "📷 Camera", onPress: () => handleLogFood("camera") },
+        { text: "🖼️ Gallery", onPress: () => handleLogFood("gallery") },
+      ]
+    );
+  };
+
+  const getScoreColor = (score: number) => {
+    if (score >= 7) return colors.accent[500];
+    if (score >= 5) return colors.warning;
+    return colors.error;
+  };
 
   return (
     <SafeAreaView style={styles.safe} edges={["top"]}>
       <ScrollView
         contentContainerStyle={styles.container}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
       >
-        {/* Compact Header */}
+        {/* Header */}
         <LinearGradient
           colors={colors.gradients.food}
           start={{ x: 0, y: 0 }}
@@ -136,121 +209,148 @@ export default function Food() {
               <Ionicons name="nutrition" size={24} color={colors.neutral[0]} />
             </View>
             <View style={styles.headerText}>
-              <Text style={styles.headerTitle}>Nutrition Guide</Text>
+              <Text style={styles.headerTitle}>Food Tracker</Text>
               <Text style={styles.headerSubtitle}>
-                Eat for glowing, healthy skin
+                Log meals • Track calories • Get honest feedback
               </Text>
             </View>
           </View>
         </LinearGradient>
 
-        {!hasData ? (
-          <View style={styles.emptyContainer}>
-            <EmptyState
-              icon="leaf-outline"
-              message="No nutrition data yet"
-            />
+        {/* Login Prompt for unauthenticated users */}
+        {!user && (
+          <View style={styles.loginPrompt}>
+            <Ionicons name="lock-closed" size={48} color={colors.neutral[300]} />
+            <Text style={styles.loginPromptTitle}>Sign In Required</Text>
+            <Text style={styles.loginPromptText}>
+              Please sign in to track your meals and get personalized feedback
+            </Text>
+            <Pressable
+              style={styles.loginButton}
+              onPress={() => router.push("/login")}
+            >
+              <Text style={styles.loginButtonText}>Sign In</Text>
+            </Pressable>
           </View>
-        ) : (
-          <>
-            {/* Foods to Eat More */}
-            {eatMore.length > 0 && (
-              <View style={styles.section}>
-                <View style={styles.sectionHeader}>
-                  <View style={[styles.sectionIcon, styles.sectionIconGreen]}>
-                    <Ionicons name="add-circle" size={20} color={colors.accent[600]} />
-                  </View>
-                  <View>
-                    <Text style={styles.sectionTitle}>Foods to Embrace</Text>
-                    <Text style={styles.sectionSubtitle}>
-                      {eatMore.length} recommendations
-                    </Text>
-                  </View>
-                </View>
-
-                <View style={styles.foodList}>
-                  {eatMore.map((item, i) => (
-                    <FoodItem key={i} item={item} type="good" index={i} />
-                  ))}
-                </View>
-              </View>
-            )}
-
-            {/* Foods to Limit */}
-            {limit.length > 0 && (
-              <View style={styles.section}>
-                <View style={styles.sectionHeader}>
-                  <View style={[styles.sectionIcon, styles.sectionIconRed]}>
-                    <Ionicons name="remove-circle" size={20} color={colors.error} />
-                  </View>
-                  <View>
-                    <Text style={styles.sectionTitle}>Foods to Limit</Text>
-                    <Text style={styles.sectionSubtitle}>
-                      {limit.length} items to avoid
-                    </Text>
-                  </View>
-                </View>
-
-                <View style={styles.foodList}>
-                  {limit.map((item, i) => (
-                    <FoodItem key={i} item={item} type="bad" index={i} />
-                  ))}
-                </View>
-              </View>
-            )}
-          </>
         )}
 
-        {/* Info Card */}
-        <View style={styles.infoCard}>
-          <View style={styles.infoIcon}>
-            <Ionicons name="time" size={20} color={colors.info} />
-          </View>
-          <View style={styles.infoContent}>
-            <Text style={styles.infoTitle}>Patience is Key</Text>
-            <Text style={styles.infoText}>
-              Dietary changes take 2-4 weeks to show visible effects on your skin. Stay consistent!
-            </Text>
-          </View>
-        </View>
+        {/* Main content for authenticated users */}
+        {user && (
+          <>
+            {/* Upload Button */}
+            <Pressable
+              style={[styles.uploadButton, uploading && styles.uploadButtonDisabled]}
+              onPress={showUploadOptions}
+              disabled={uploading}
+            >
+              {uploading ? (
+                <>
+                  <ActivityIndicator color={colors.neutral[0]} size="small" />
+                  <Text style={styles.uploadButtonText}>Analyzing...</Text>
+                </>
+              ) : (
+                <>
+                  <Ionicons name="camera" size={24} color={colors.neutral[0]} />
+                  <Text style={styles.uploadButtonText}>Log Your Meal</Text>
+                  <Ionicons name="add-circle" size={20} color={colors.neutral[0]} />
+                </>
+              )}
+            </Pressable>
 
-        {/* Products Section */}
-        <View style={styles.productsSection}>
-          <View style={styles.productsSectionHeader}>
-            <Ionicons name="cart" size={22} color={colors.text.primary} />
-            <Text style={styles.productsTitle}>Recommended Products</Text>
-          </View>
-          <Text style={styles.productsSubtitle}>
-            Premium quality, skin-friendly nutrition
-          </Text>
+            {/* Today's Stats */}
+            <View style={styles.statsRow}>
+              <View style={styles.statCard}>
+                <Ionicons name="flame" size={24} color={colors.error} />
+                <Text style={styles.statValue}>{stats.calories}</Text>
+                <Text style={styles.statLabel}>Calories</Text>
+              </View>
+              <View style={styles.statCard}>
+                <View
+                  style={[
+                    styles.scoreBadge,
+                    { backgroundColor: stats.mealsLogged > 0 ? getScoreColor(stats.healthScore) : colors.neutral[300] },
+                  ]}
+                >
+                  <Text style={styles.scoreValue}>
+                    {stats.mealsLogged > 0 ? stats.healthScore.toFixed(1) : "-"}
+                  </Text>
+                </View>
+                <Text style={styles.statLabel}>Health Score</Text>
+              </View>
+              <View style={styles.statCard}>
+                <Ionicons name="restaurant" size={24} color={colors.primary[500]} />
+                <Text style={styles.statValue}>{stats.mealsLogged}</Text>
+                <Text style={styles.statLabel}>Meals</Text>
+              </View>
+            </View>
 
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.productsScroll}
-          >
-            <ProductCard
-              title="Organic Green Tea"
-              price="₹299"
-              image="https://m.media-amazon.com/images/I/71d5yF2bYXL._SL1500_.jpg"
-              link="https://www.amazon.in/"
-            />
-            <ProductCard
-              title="Raw Walnuts – Omega 3"
-              price="₹499"
-              image="https://m.media-amazon.com/images/I/81Fz6nM6J-L._SL1500_.jpg"
-              link="https://www.flipkart.com/"
-            />
-            <ProductCard
-              title="Organic Chia Seeds"
-              price="₹349"
-              image="https://m.media-amazon.com/images/I/71S8VYTYAPL._SL1500_.jpg"
-              link="https://www.amazon.in/"
-            />
-          </ScrollView>
-        </View>
+            {/* Daily Summary Button */}
+            {stats.mealsLogged > 0 && (
+              <Pressable
+                style={styles.summaryButton}
+                onPress={() => router.push("/food-summary")}
+              >
+                <Ionicons name="bar-chart" size={20} color={colors.primary[600]} />
+                <Text style={styles.summaryButtonText}>View Daily Summary</Text>
+                <Ionicons name="chevron-forward" size={18} color={colors.primary[600]} />
+              </Pressable>
+            )}
 
-        <View style={{ height: spacing[10] }} />
+            {/* Today's Log */}
+            <View style={styles.section}>
+              <View style={styles.sectionHeader}>
+                <Text style={styles.sectionTitle}>Today's Log</Text>
+                <Text style={styles.sectionCount}>{logs.length} entries</Text>
+              </View>
+
+              {loading ? (
+                <View style={styles.loadingContainer}>
+                  <ActivityIndicator size="large" color={colors.primary[500]} />
+                </View>
+              ) : logs.length === 0 ? (
+                <View style={styles.emptyState}>
+                  <Ionicons name="restaurant-outline" size={48} color={colors.neutral[300]} />
+                  <Text style={styles.emptyTitle}>No meals logged yet</Text>
+                  <Text style={styles.emptyText}>
+                    Tap the button above to log your first meal!
+                  </Text>
+                </View>
+              ) : (
+                <View style={styles.logsList}>
+                  {logs.map((log) => (
+                    <FoodLogCard
+                      key={log.id}
+                      id={log.id}
+                      foodName={log.food_name}
+                      category={log.category}
+                      healthScore={log.health_score}
+                      calories={log.calories}
+                      macros={log.macros}
+                      verdict={log.verdict}
+                      loggedAt={log.logged_at}
+                      onDelete={handleDeleteLog}
+                    />
+                  ))}
+                </View>
+              )}
+            </View>
+
+            {/* Info Card */}
+            <View style={styles.infoCard}>
+              <View style={styles.infoIcon}>
+                <Ionicons name="information-circle" size={20} color={colors.info} />
+              </View>
+              <View style={styles.infoContent}>
+                <Text style={styles.infoTitle}>How it works</Text>
+                <Text style={styles.infoText}>
+                  Take a photo of your meal. Our AI will analyze the food, estimate calories and macros, and give you honest feedback about your choices.
+                </Text>
+              </View>
+            </View>
+
+            <View style={{ height: spacing[10] }} />
+          </>
+        )}
       </ScrollView>
     </SafeAreaView>
   );
@@ -298,36 +398,80 @@ const styles = StyleSheet.create({
     color: "rgba(255,255,255,0.9)",
   },
 
-  // Empty State
-  emptyContainer: {
-    padding: layout.screenPaddingHorizontal,
-    paddingTop: spacing[10],
-  },
-  emptyState: {
-    alignItems: "center",
-    padding: spacing[8],
-    backgroundColor: colors.neutral[0],
-    borderRadius: radius.xl,
-    ...shadows.sm,
-  },
-  emptyIcon: {
-    width: 80,
-    height: 80,
-    borderRadius: radius.full,
-    backgroundColor: colors.neutral[100],
+  // Upload Button
+  uploadButton: {
+    flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: spacing[4],
+    gap: spacing[3],
+    backgroundColor: colors.primary[500],
+    marginHorizontal: layout.screenPaddingHorizontal,
+    marginTop: spacing[6],
+    paddingVertical: spacing[4],
+    borderRadius: radius.xl,
+    ...shadows.md,
   },
-  emptyText: {
+  uploadButtonDisabled: {
+    opacity: 0.7,
+  },
+  uploadButtonText: {
     ...textStyles.h4,
-    color: colors.text.secondary,
-    marginBottom: spacing[2],
+    color: colors.neutral[0],
   },
-  emptyHint: {
+
+  // Stats Row
+  statsRow: {
+    flexDirection: "row",
+    gap: spacing[3],
+    paddingHorizontal: layout.screenPaddingHorizontal,
+    marginTop: spacing[6],
+  },
+  statCard: {
+    flex: 1,
+    backgroundColor: colors.neutral[0],
+    borderRadius: radius.lg,
+    padding: spacing[4],
+    alignItems: "center",
+    ...shadows.sm,
+  },
+  statValue: {
+    ...textStyles.h3,
+    color: colors.text.primary,
+    marginTop: spacing[2],
+  },
+  statLabel: {
     ...textStyles.caption,
     color: colors.text.tertiary,
-    textAlign: "center",
+  },
+  scoreBadge: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  scoreValue: {
+    ...textStyles.bodyMedium,
+    color: colors.neutral[0],
+    fontWeight: "700",
+  },
+
+  // Summary Button
+  summaryButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing[2],
+    backgroundColor: colors.primary[50],
+    marginHorizontal: layout.screenPaddingHorizontal,
+    marginTop: spacing[4],
+    paddingVertical: spacing[3],
+    paddingHorizontal: spacing[4],
+    borderRadius: radius.lg,
+  },
+  summaryButtonText: {
+    ...textStyles.bodyMedium,
+    color: colors.primary[600],
+    flex: 1,
   },
 
   // Section
@@ -337,77 +481,48 @@ const styles = StyleSheet.create({
   },
   sectionHeader: {
     flexDirection: "row",
+    justifyContent: "space-between",
     alignItems: "center",
     marginBottom: spacing[4],
-  },
-  sectionIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: radius.md,
-    alignItems: "center",
-    justifyContent: "center",
-    marginRight: spacing[3],
-  },
-  sectionIconGreen: {
-    backgroundColor: colors.accent[100],
-  },
-  sectionIconRed: {
-    backgroundColor: colors.errorLight,
   },
   sectionTitle: {
     ...textStyles.h4,
     color: colors.text.primary,
   },
-  sectionSubtitle: {
+  sectionCount: {
     ...textStyles.caption,
     color: colors.text.tertiary,
   },
 
-  // Food List
-  foodList: {
+  // Logs List
+  logsList: {
     gap: spacing[3],
   },
-  foodItem: {
-    borderRadius: radius.lg,
-    borderLeftWidth: 4,
+
+  // Loading
+  loadingContainer: {
+    padding: spacing[8],
+    alignItems: "center",
+  },
+
+  // Empty State
+  emptyState: {
+    alignItems: "center",
+    padding: spacing[8],
     backgroundColor: colors.neutral[0],
+    borderRadius: radius.xl,
     ...shadows.sm,
   },
-  foodItemHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    padding: spacing[4],
+  emptyTitle: {
+    ...textStyles.h4,
+    color: colors.text.secondary,
+    marginTop: spacing[3],
   },
-  foodIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: radius.md,
-    alignItems: "center",
-    justifyContent: "center",
-    marginRight: spacing[3],
-  },
-  foodContent: {
-    flex: 1,
-  },
-  foodName: {
-    ...textStyles.bodyMedium,
-    color: colors.text.primary,
-  },
-  foodBenefitPreview: {
+  emptyText: {
     ...textStyles.caption,
     color: colors.text.tertiary,
-    marginTop: spacing[0.5],
-  },
-  foodExpanded: {
-    paddingHorizontal: spacing[4],
-    paddingBottom: spacing[4],
-    paddingTop: 0,
-    marginLeft: spacing[12],
-  },
-  foodBenefit: {
-    ...textStyles.body,
-    color: colors.text.secondary,
-    lineHeight: 22,
+    textAlign: "center",
+    marginTop: spacing[1],
   },
 
   // Info Card
@@ -444,27 +559,36 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
 
-  // Products Section
-  productsSection: {
-    marginTop: spacing[8],
-    paddingHorizontal: layout.screenPaddingHorizontal,
-  },
-  productsSectionHeader: {
-    flexDirection: "row",
+  // Login Prompt
+  loginPrompt: {
     alignItems: "center",
-    gap: spacing[2],
-    marginBottom: spacing[1],
+    padding: spacing[8],
+    marginHorizontal: layout.screenPaddingHorizontal,
+    marginTop: spacing[6],
+    backgroundColor: colors.neutral[0],
+    borderRadius: radius.xl,
+    ...shadows.sm,
   },
-  productsTitle: {
+  loginPromptTitle: {
     ...textStyles.h4,
     color: colors.text.primary,
+    marginTop: spacing[4],
+    marginBottom: spacing[2],
   },
-  productsSubtitle: {
-    ...textStyles.caption,
+  loginPromptText: {
+    ...textStyles.body,
     color: colors.text.tertiary,
+    textAlign: "center",
     marginBottom: spacing[4],
   },
-  productsScroll: {
-    gap: spacing[3],
+  loginButton: {
+    backgroundColor: colors.primary[500],
+    paddingHorizontal: spacing[8],
+    paddingVertical: spacing[3],
+    borderRadius: radius.lg,
+  },
+  loginButtonText: {
+    ...textStyles.bodyMedium,
+    color: colors.text.inverse,
   },
 });

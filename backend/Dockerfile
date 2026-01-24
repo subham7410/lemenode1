@@ -26,7 +26,7 @@ COPY --from=builder /root/.local /root/.local
 ENV PATH=/root/.local/bin:$PATH
 
 # Copy application code
-# Cache bust: 2026-01-12-v15-uvicorn-restored-all
+# Cache bust: 2026-01-24-v16-food-tracking-added
 COPY . .
 
 # Compile Python bytecode for faster startup

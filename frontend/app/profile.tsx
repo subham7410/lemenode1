@@ -232,6 +232,18 @@ export default function ProfileScreen() {
                         <Text style={styles.cardTitle}>Settings</Text>
                     </View>
 
+                    <TouchableOpacity
+                        style={styles.menuItem}
+                        onPress={() => router.push("/weekly-report")}
+                    >
+                        <Ionicons name="document-text-outline" size={22} color="#374151" />
+                        <Text style={styles.menuItemText}>Weekly Report</Text>
+                        <View style={styles.newBadge}>
+                            <Text style={styles.newBadgeText}>NEW</Text>
+                        </View>
+                        <Ionicons name="chevron-forward" size={20} color="#9ca3af" />
+                    </TouchableOpacity>
+
                     <TouchableOpacity style={styles.menuItem}>
                         <Ionicons name="notifications-outline" size={22} color="#374151" />
                         <Text style={styles.menuItemText}>Notifications</Text>
@@ -433,5 +445,17 @@ const styles = StyleSheet.create({
         fontSize: 15,
         color: "#374151",
         marginLeft: 12,
+    },
+    newBadge: {
+        backgroundColor: "#10B981",
+        paddingHorizontal: 8,
+        paddingVertical: 2,
+        borderRadius: 10,
+        marginRight: 8,
+    },
+    newBadgeText: {
+        color: "#fff",
+        fontSize: 10,
+        fontWeight: "700",
     },
 });
