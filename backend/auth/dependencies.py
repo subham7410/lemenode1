@@ -21,7 +21,10 @@ async def get_current_user(
     credentials: Optional[HTTPAuthorizationCredentials] = Depends(security)
 ) -> CurrentUser:
     """
-    Dependency that validates Firebase token and returns current user.
+    Dependency that validates Firebase or Google ID token and returns current user.
+    
+    Tries Firebase token first, then falls back to Google OAuth token.
+    This supports both Firebase Auth and native Google Sign-In.
     
     Usage:
         @app.get("/protected")
@@ -37,6 +40,7 @@ async def get_current_user(
     
     token = credentials.credentials
     
+    # Try Firebase token first
     try:
         decoded = verify_firebase_token(token)
         
@@ -47,9 +51,23 @@ async def get_current_user(
             name=decoded.get("name"),
             picture=decoded.get("picture"),
         )
+    except Exception as firebase_error:
+        logger.debug(f"Firebase token validation failed, trying Google token: {firebase_error}")
+    
+    # Fall back to Google OAuth token
+    try:
+        from .firebase_admin import verify_google_token
+        decoded = verify_google_token(token)
         
-    except Exception as e:
-        logger.warning(f"Token validation failed: {e}")
+        return CurrentUser(
+            uid=decoded["uid"],
+            email=decoded.get("email"),
+            email_verified=decoded.get("email_verified", False),
+            name=decoded.get("name"),
+            picture=decoded.get("picture"),
+        )
+    except Exception as google_error:
+        logger.warning(f"Both token validations failed. Firebase: {firebase_error}, Google: {google_error}")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid or expired token",

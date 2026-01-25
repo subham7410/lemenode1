@@ -160,9 +160,9 @@ export default function Profile() {
   return (
     <SafeAreaView style={styles.safe} edges={["top"]}>
       <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
-        {/* Header with Avatar */}
+        {/* Premium Header with Avatar */}
         <LinearGradient
-          colors={colors.gradients.primary}
+          colors={["#1a1a2e", "#16213e", "#0f3460"]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={styles.header}

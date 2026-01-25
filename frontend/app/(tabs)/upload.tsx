@@ -230,10 +230,17 @@ export default function Upload() {
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
-          {/* Header with Streak Badge */}
-          <View style={styles.header}>
-            <View style={styles.headerRow}>
-              <Text style={styles.title}>Skin Analysis</Text>
+          {/* Premium Header */}
+          <LinearGradient
+            colors={["#1a1a2e", "#16213e", "#0f3460"]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.header}
+          >
+            <View style={styles.headerTop}>
+              <View style={styles.headerBadge}>
+                <Text style={styles.headerBadgeText}>✨</Text>
+              </View>
               {authUser?.current_streak ? (
                 <StreakBadge
                   currentStreak={authUser.current_streak}
@@ -242,10 +249,15 @@ export default function Upload() {
                 />
               ) : null}
             </View>
-            <Text style={styles.subtitle}>
-              Upload a clear face photo for AI-powered analysis
+            <Text style={styles.headerTitle}>SkinGlow AI</Text>
+            <Text style={styles.headerSubtitle}>
+              Professional Skin Analysis
             </Text>
-          </View>
+            <View style={styles.headerDivider} />
+            <Text style={styles.headerTagline}>
+              Powered by advanced AI vision
+            </Text>
+          </LinearGradient>
 
           {/* Image Preview Area */}
           <View style={styles.imageSection}>
@@ -268,11 +280,16 @@ export default function Upload() {
               </View>
             ) : (
               <Pressable style={styles.placeholder} onPress={takePhoto}>
-                <View style={styles.placeholderIcon}>
-                  <Ionicons name="scan-outline" size={40} color={colors.primary[400]} />
+                <View style={styles.placeholderIconContainer}>
+                  <LinearGradient
+                    colors={["#667eea", "#764ba2"]}
+                    style={styles.placeholderIcon}
+                  >
+                    <Ionicons name="scan-outline" size={32} color={colors.neutral[0]} />
+                  </LinearGradient>
                 </View>
-                <Text style={styles.placeholderTitle}>Tap to capture</Text>
-                <Text style={styles.placeholderHint}>or use buttons below</Text>
+                <Text style={styles.placeholderTitle}>Capture Your Skin</Text>
+                <Text style={styles.placeholderHint}>Tap here or use buttons below</Text>
 
                 {/* Face guide overlay hint */}
                 <View style={styles.faceGuide}>
@@ -407,23 +424,57 @@ const styles = StyleSheet.create({
     borderTopColor: colors.border.light,
   },
 
-  // Header
+  // Premium Header
   header: {
-    marginBottom: spacing[4],
+    marginHorizontal: -layout.screenPaddingHorizontal,
+    paddingHorizontal: layout.screenPaddingHorizontal,
+    paddingTop: spacing[5],
+    paddingBottom: spacing[6],
+    borderBottomLeftRadius: 28,
+    borderBottomRightRadius: 28,
+    alignItems: "center",
+    marginBottom: spacing[5],
   },
-  headerRow: {
+  headerTop: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: spacing[1],
+    width: "100%",
+    marginBottom: spacing[3],
   },
-  title: {
-    ...textStyles.h2,
-    color: colors.text.primary,
+  headerBadge: {
+    width: 48,
+    height: 48,
+    borderRadius: 14,
+    backgroundColor: "rgba(255,255,255,0.15)",
+    alignItems: "center",
+    justifyContent: "center",
   },
-  subtitle: {
-    ...textStyles.body,
-    color: colors.text.secondary,
+  headerBadgeText: {
+    fontSize: 24,
+  },
+  headerTitle: {
+    fontSize: 26,
+    fontWeight: "800",
+    color: colors.neutral[0],
+    letterSpacing: -0.5,
+  },
+  headerSubtitle: {
+    fontSize: 14,
+    color: "rgba(255,255,255,0.7)",
+    marginTop: spacing[1],
+  },
+  headerDivider: {
+    width: 40,
+    height: 2,
+    backgroundColor: "rgba(255,255,255,0.3)",
+    marginVertical: spacing[3],
+    borderRadius: 1,
+  },
+  headerTagline: {
+    fontSize: 12,
+    color: "rgba(255,255,255,0.5)",
+    fontStyle: "italic",
   },
 
   // Image Section
@@ -431,8 +482,8 @@ const styles = StyleSheet.create({
     marginBottom: spacing[4],
   },
   imageWrapper: {
-    height: 260,
-    borderRadius: radius.xl,
+    height: 280,
+    borderRadius: 20,
     overflow: "hidden",
     backgroundColor: colors.neutral[200],
   },
@@ -444,16 +495,16 @@ const styles = StyleSheet.create({
     position: "absolute",
     top: spacing[3],
     right: spacing[3],
-    width: 32,
-    height: 32,
-    borderRadius: radius.full,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     backgroundColor: "rgba(0,0,0,0.5)",
     alignItems: "center",
     justifyContent: "center",
   },
   loadingOverlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(0,0,0,0.6)",
+    backgroundColor: "rgba(0,0,0,0.7)",
     alignItems: "center",
     justifyContent: "center",
   },
@@ -462,39 +513,42 @@ const styles = StyleSheet.create({
     gap: spacing[3],
   },
   loadingText: {
-    ...textStyles.bodyMedium,
+    fontSize: 15,
+    fontWeight: "600",
     color: colors.neutral[0],
   },
 
   // Placeholder
   placeholder: {
-    height: 260,
-    borderRadius: radius.xl,
+    height: 280,
+    borderRadius: 20,
     borderWidth: 2,
-    borderColor: colors.primary[200],
+    borderColor: "rgba(102, 126, 234, 0.3)",
     borderStyle: "dashed",
-    backgroundColor: colors.primary[50],
+    backgroundColor: "rgba(102, 126, 234, 0.05)",
     alignItems: "center",
     justifyContent: "center",
     position: "relative",
     overflow: "hidden",
   },
-  placeholderIcon: {
-    width: 64,
-    height: 64,
-    borderRadius: radius.full,
-    backgroundColor: colors.primary[100],
-    alignItems: "center",
-    justifyContent: "center",
+  placeholderIconContainer: {
     marginBottom: spacing[3],
   },
+  placeholderIcon: {
+    width: 72,
+    height: 72,
+    borderRadius: 20,
+    alignItems: "center",
+    justifyContent: "center",
+  },
   placeholderTitle: {
-    ...textStyles.h4,
-    color: colors.primary[600],
+    fontSize: 17,
+    fontWeight: "700",
+    color: "#667eea",
     marginBottom: spacing[1],
   },
   placeholderHint: {
-    ...textStyles.caption,
+    fontSize: 13,
     color: colors.text.tertiary,
   },
 
@@ -508,7 +562,7 @@ const styles = StyleSheet.create({
     position: "absolute",
     width: 24,
     height: 24,
-    borderColor: colors.primary[300],
+    borderColor: "rgba(102, 126, 234, 0.4)",
     borderTopWidth: 3,
     borderLeftWidth: 3,
     borderTopLeftRadius: 8,

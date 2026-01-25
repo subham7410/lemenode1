@@ -153,7 +153,16 @@ export default function Food() {
       }
     } catch (err: any) {
       console.error("Failed to log food:", err);
-      Alert.alert("Error", err.message || "Failed to analyze food. Please try again.");
+      const status = err.response?.status;
+      if (status === 401) {
+        Alert.alert(
+          "Session Expired",
+          "Please sign in again to log your meals.",
+          [{ text: "OK", onPress: () => router.push("/login") }]
+        );
+      } else {
+        Alert.alert("Error", err.message || "Failed to analyze food. Please try again.");
+      }
     } finally {
       setUploading(false);
     }
@@ -197,24 +206,24 @@ export default function Food() {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
       >
-        {/* Header */}
+        {/* Header with Premium Design */}
         <LinearGradient
-          colors={colors.gradients.food}
+          colors={["#1a1a2e", "#16213e", "#0f3460"]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={styles.header}
         >
-          <View style={styles.headerContent}>
-            <View style={styles.headerIcon}>
-              <Ionicons name="nutrition" size={24} color={colors.neutral[0]} />
-            </View>
-            <View style={styles.headerText}>
-              <Text style={styles.headerTitle}>Food Tracker</Text>
-              <Text style={styles.headerSubtitle}>
-                Log meals • Track calories • Get honest feedback
-              </Text>
-            </View>
+          <View style={styles.headerBadge}>
+            <Text style={styles.headerBadgeText}>🍽️</Text>
           </View>
+          <Text style={styles.headerTitle}>NutriTrack</Text>
+          <Text style={styles.headerSubtitle}>
+            AI-Powered Food Analysis
+          </Text>
+          <View style={styles.headerDivider} />
+          <Text style={styles.headerTagline}>
+            No sugar coating. Just real feedback.
+          </Text>
         </LinearGradient>
 
         {/* Login Prompt for unauthenticated users */}
@@ -237,50 +246,84 @@ export default function Food() {
         {/* Main content for authenticated users */}
         {user && (
           <>
-            {/* Upload Button */}
+            {/* Premium Upload Button */}
             <Pressable
               style={[styles.uploadButton, uploading && styles.uploadButtonDisabled]}
               onPress={showUploadOptions}
               disabled={uploading}
             >
-              {uploading ? (
-                <>
-                  <ActivityIndicator color={colors.neutral[0]} size="small" />
-                  <Text style={styles.uploadButtonText}>Analyzing...</Text>
-                </>
-              ) : (
-                <>
-                  <Ionicons name="camera" size={24} color={colors.neutral[0]} />
-                  <Text style={styles.uploadButtonText}>Log Your Meal</Text>
-                  <Ionicons name="add-circle" size={20} color={colors.neutral[0]} />
-                </>
-              )}
+              <LinearGradient
+                colors={["#667eea", "#764ba2"]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={styles.uploadButtonGradient}
+              >
+                {uploading ? (
+                  <>
+                    <ActivityIndicator color={colors.neutral[0]} size="small" />
+                    <Text style={styles.uploadButtonText}>Analyzing...</Text>
+                  </>
+                ) : (
+                  <>
+                    <View style={styles.uploadIconContainer}>
+                      <Ionicons name="camera" size={22} color={colors.neutral[0]} />
+                    </View>
+                    <View style={styles.uploadTextContainer}>
+                      <Text style={styles.uploadButtonText}>Log Your Meal</Text>
+                      <Text style={styles.uploadButtonSubtext}>Tap to snap or upload</Text>
+                    </View>
+                    <Ionicons name="chevron-forward" size={20} color="rgba(255,255,255,0.7)" />
+                  </>
+                )}
+              </LinearGradient>
             </Pressable>
 
-            {/* Today's Stats */}
-            <View style={styles.statsRow}>
-              <View style={styles.statCard}>
-                <Ionicons name="flame" size={24} color={colors.error} />
-                <Text style={styles.statValue}>{stats.calories}</Text>
-                <Text style={styles.statLabel}>Calories</Text>
-              </View>
-              <View style={styles.statCard}>
-                <View
-                  style={[
-                    styles.scoreBadge,
-                    { backgroundColor: stats.mealsLogged > 0 ? getScoreColor(stats.healthScore) : colors.neutral[300] },
-                  ]}
+            {/* Today's Stats - Premium Cards */}
+            <View style={styles.statsSection}>
+              <Text style={styles.statsSectionTitle}>Today's Snapshot</Text>
+              <View style={styles.statsRow}>
+                <LinearGradient
+                  colors={["#ff6b6b", "#ee5a5a"]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={styles.statCardGradient}
                 >
-                  <Text style={styles.scoreValue}>
+                  <Ionicons name="flame" size={20} color="rgba(255,255,255,0.9)" />
+                  <Text style={styles.statValueWhite}>{stats.calories}</Text>
+                  <Text style={styles.statLabelWhite}>Calories</Text>
+                </LinearGradient>
+
+                <LinearGradient
+                  colors={stats.mealsLogged > 0 && stats.healthScore >= 7
+                    ? ["#00c9a7", "#00b894"]
+                    : stats.mealsLogged > 0 && stats.healthScore >= 4
+                      ? ["#ffc107", "#ffb300"]
+                      : ["#adb5bd", "#868e96"]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={styles.statCardGradient}
+                >
+                  <Text style={styles.scoreEmoji}>
+                    {stats.mealsLogged > 0
+                      ? stats.healthScore >= 7 ? "🌟" : stats.healthScore >= 4 ? "⚡" : "⚠️"
+                      : "➖"}
+                  </Text>
+                  <Text style={styles.statValueWhite}>
                     {stats.mealsLogged > 0 ? stats.healthScore.toFixed(1) : "-"}
                   </Text>
-                </View>
-                <Text style={styles.statLabel}>Health Score</Text>
-              </View>
-              <View style={styles.statCard}>
-                <Ionicons name="restaurant" size={24} color={colors.primary[500]} />
-                <Text style={styles.statValue}>{stats.mealsLogged}</Text>
-                <Text style={styles.statLabel}>Meals</Text>
+                  <Text style={styles.statLabelWhite}>Health Score</Text>
+                </LinearGradient>
+
+                <LinearGradient
+                  colors={["#667eea", "#5a67d8"]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={styles.statCardGradient}
+                >
+                  <Ionicons name="restaurant" size={20} color="rgba(255,255,255,0.9)" />
+                  <Text style={styles.statValueWhite}>{stats.mealsLogged}</Text>
+                  <Text style={styles.statLabelWhite}>Meals</Text>
+                </LinearGradient>
               </View>
             </View>
 
@@ -290,17 +333,28 @@ export default function Food() {
                 style={styles.summaryButton}
                 onPress={() => router.push("/food-summary")}
               >
-                <Ionicons name="bar-chart" size={20} color={colors.primary[600]} />
-                <Text style={styles.summaryButtonText}>View Daily Summary</Text>
-                <Ionicons name="chevron-forward" size={18} color={colors.primary[600]} />
+                <View style={styles.summaryIconContainer}>
+                  <Ionicons name="analytics" size={18} color="#667eea" />
+                </View>
+                <View style={styles.summaryTextContainer}>
+                  <Text style={styles.summaryButtonTitle}>Daily Analysis</Text>
+                  <Text style={styles.summaryButtonSubtext}>View detailed breakdown →</Text>
+                </View>
               </Pressable>
             )}
 
             {/* Today's Log */}
             <View style={styles.section}>
               <View style={styles.sectionHeader}>
-                <Text style={styles.sectionTitle}>Today's Log</Text>
-                <Text style={styles.sectionCount}>{logs.length} entries</Text>
+                <View style={styles.sectionTitleContainer}>
+                  <Text style={styles.sectionTitle}>Food Journal</Text>
+                  <View style={styles.sectionBadge}>
+                    <Text style={styles.sectionBadgeText}>{logs.length}</Text>
+                  </View>
+                </View>
+                <Text style={styles.sectionDate}>
+                  {new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+                </Text>
               </View>
 
               {loading ? (
@@ -309,10 +363,12 @@ export default function Food() {
                 </View>
               ) : logs.length === 0 ? (
                 <View style={styles.emptyState}>
-                  <Ionicons name="restaurant-outline" size={48} color={colors.neutral[300]} />
-                  <Text style={styles.emptyTitle}>No meals logged yet</Text>
+                  <View style={styles.emptyIconContainer}>
+                    <Ionicons name="leaf-outline" size={32} color="#667eea" />
+                  </View>
+                  <Text style={styles.emptyTitle}>Start Your Food Journey</Text>
                   <Text style={styles.emptyText}>
-                    Tap the button above to log your first meal!
+                    Log your first meal to begin tracking your nutrition and get personalized insights.
                   </Text>
                 </View>
               ) : (
@@ -335,15 +391,15 @@ export default function Food() {
               )}
             </View>
 
-            {/* Info Card */}
+            {/* Info Card - Subtle Design */}
             <View style={styles.infoCard}>
-              <View style={styles.infoIcon}>
-                <Ionicons name="information-circle" size={20} color={colors.info} />
+              <View style={styles.infoIconBubble}>
+                <Ionicons name="sparkles" size={16} color="#667eea" />
               </View>
               <View style={styles.infoContent}>
-                <Text style={styles.infoTitle}>How it works</Text>
+                <Text style={styles.infoTitle}>Powered by AI</Text>
                 <Text style={styles.infoText}>
-                  Take a photo of your meal. Our AI will analyze the food, estimate calories and macros, and give you honest feedback about your choices.
+                  Snap a photo and get instant nutritional analysis with brutally honest feedback about your food choices.
                 </Text>
               </View>
             </View>
@@ -359,119 +415,174 @@ export default function Food() {
 const styles = StyleSheet.create({
   safe: {
     flex: 1,
-    backgroundColor: colors.background.primary,
+    backgroundColor: "#f8f9fa",
   },
   container: {
     paddingBottom: spacing[5],
   },
 
-  // Header
+  // Premium Header
   header: {
     paddingHorizontal: layout.screenPaddingHorizontal,
-    paddingVertical: spacing[5],
-    borderBottomLeftRadius: radius.xl,
-    borderBottomRightRadius: radius.xl,
-  },
-  headerContent: {
-    flexDirection: "row",
+    paddingVertical: spacing[7],
+    paddingBottom: spacing[8],
+    borderBottomLeftRadius: 32,
+    borderBottomRightRadius: 32,
     alignItems: "center",
   },
-  headerIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: radius.lg,
-    backgroundColor: "rgba(255,255,255,0.2)",
+  headerBadge: {
+    width: 56,
+    height: 56,
+    borderRadius: 16,
+    backgroundColor: "rgba(255,255,255,0.15)",
     alignItems: "center",
     justifyContent: "center",
-    marginRight: spacing[4],
+    marginBottom: spacing[3],
   },
-  headerText: {
-    flex: 1,
+  headerBadgeText: {
+    fontSize: 28,
   },
   headerTitle: {
-    ...textStyles.h3,
+    fontSize: 28,
+    fontWeight: "800",
     color: colors.neutral[0],
-    marginBottom: spacing[0.5],
+    letterSpacing: -0.5,
   },
   headerSubtitle: {
-    ...textStyles.body,
-    color: "rgba(255,255,255,0.9)",
+    fontSize: 14,
+    color: "rgba(255,255,255,0.7)",
+    marginTop: spacing[1],
+    letterSpacing: 0.5,
+  },
+  headerDivider: {
+    width: 40,
+    height: 2,
+    backgroundColor: "rgba(255,255,255,0.3)",
+    marginVertical: spacing[3],
+    borderRadius: 1,
+  },
+  headerTagline: {
+    fontSize: 12,
+    color: "rgba(255,255,255,0.6)",
+    fontStyle: "italic",
   },
 
   // Upload Button
   uploadButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: spacing[3],
-    backgroundColor: colors.primary[500],
     marginHorizontal: layout.screenPaddingHorizontal,
-    marginTop: spacing[6],
-    paddingVertical: spacing[4],
-    borderRadius: radius.xl,
-    ...shadows.md,
+    marginTop: -spacing[5],
+    borderRadius: 16,
+    overflow: "hidden",
+    ...shadows.lg,
   },
   uploadButtonDisabled: {
     opacity: 0.7,
   },
+  uploadButtonGradient: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: spacing[4],
+    paddingHorizontal: spacing[5],
+  },
+  uploadIconContainer: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: "rgba(255,255,255,0.2)",
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: spacing[3],
+  },
+  uploadTextContainer: {
+    flex: 1,
+  },
   uploadButtonText: {
-    ...textStyles.h4,
+    fontSize: 16,
+    fontWeight: "700",
     color: colors.neutral[0],
   },
+  uploadButtonSubtext: {
+    fontSize: 12,
+    color: "rgba(255,255,255,0.7)",
+    marginTop: 2,
+  },
 
-  // Stats Row
+  // Stats Section
+  statsSection: {
+    marginTop: spacing[6],
+    paddingHorizontal: layout.screenPaddingHorizontal,
+  },
+  statsSectionTitle: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: colors.text.tertiary,
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+    marginBottom: spacing[3],
+  },
   statsRow: {
     flexDirection: "row",
     gap: spacing[3],
-    paddingHorizontal: layout.screenPaddingHorizontal,
-    marginTop: spacing[6],
   },
-  statCard: {
+  statCardGradient: {
     flex: 1,
-    backgroundColor: colors.neutral[0],
-    borderRadius: radius.lg,
+    borderRadius: 16,
     padding: spacing[4],
     alignItems: "center",
     ...shadows.sm,
   },
-  statValue: {
-    ...textStyles.h3,
-    color: colors.text.primary,
+  statValueWhite: {
+    fontSize: 24,
+    fontWeight: "800",
+    color: colors.neutral[0],
     marginTop: spacing[2],
   },
-  statLabel: {
-    ...textStyles.caption,
-    color: colors.text.tertiary,
+  statLabelWhite: {
+    fontSize: 11,
+    color: "rgba(255,255,255,0.85)",
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+    marginTop: spacing[1],
   },
-  scoreBadge: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  scoreValue: {
-    ...textStyles.bodyMedium,
-    color: colors.neutral[0],
-    fontWeight: "700",
+  scoreEmoji: {
+    fontSize: 20,
   },
 
   // Summary Button
   summaryButton: {
     flexDirection: "row",
     alignItems: "center",
-    gap: spacing[2],
-    backgroundColor: colors.primary[50],
+    backgroundColor: colors.neutral[0],
     marginHorizontal: layout.screenPaddingHorizontal,
     marginTop: spacing[4],
     paddingVertical: spacing[3],
     paddingHorizontal: spacing[4],
-    borderRadius: radius.lg,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: "rgba(102, 126, 234, 0.2)",
+    ...shadows.xs,
   },
-  summaryButtonText: {
-    ...textStyles.bodyMedium,
-    color: colors.primary[600],
+  summaryIconContainer: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: "rgba(102, 126, 234, 0.1)",
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: spacing[3],
+  },
+  summaryTextContainer: {
     flex: 1,
+  },
+  summaryButtonTitle: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: colors.text.primary,
+  },
+  summaryButtonSubtext: {
+    fontSize: 12,
+    color: "#667eea",
+    marginTop: 1,
   },
 
   // Section
@@ -485,12 +596,29 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: spacing[4],
   },
+  sectionTitleContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
   sectionTitle: {
-    ...textStyles.h4,
+    fontSize: 18,
+    fontWeight: "700",
     color: colors.text.primary,
   },
-  sectionCount: {
-    ...textStyles.caption,
+  sectionBadge: {
+    backgroundColor: "#667eea",
+    paddingHorizontal: spacing[2],
+    paddingVertical: 2,
+    borderRadius: 8,
+    marginLeft: spacing[2],
+  },
+  sectionBadgeText: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: colors.neutral[0],
+  },
+  sectionDate: {
+    fontSize: 12,
     color: colors.text.tertiary,
   },
 
@@ -510,37 +638,50 @@ const styles = StyleSheet.create({
     alignItems: "center",
     padding: spacing[8],
     backgroundColor: colors.neutral[0],
-    borderRadius: radius.xl,
-    ...shadows.sm,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: "rgba(0,0,0,0.05)",
+  },
+  emptyIconContainer: {
+    width: 64,
+    height: 64,
+    borderRadius: 20,
+    backgroundColor: "rgba(102, 126, 234, 0.1)",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: spacing[4],
   },
   emptyTitle: {
-    ...textStyles.h4,
-    color: colors.text.secondary,
-    marginTop: spacing[3],
+    fontSize: 16,
+    fontWeight: "600",
+    color: colors.text.primary,
   },
   emptyText: {
-    ...textStyles.caption,
+    fontSize: 13,
     color: colors.text.tertiary,
     textAlign: "center",
-    marginTop: spacing[1],
+    marginTop: spacing[2],
+    lineHeight: 20,
+    maxWidth: 260,
   },
 
   // Info Card
   infoCard: {
     flexDirection: "row",
+    alignItems: "flex-start",
     marginHorizontal: layout.screenPaddingHorizontal,
     marginTop: spacing[6],
     padding: spacing[4],
-    backgroundColor: colors.infoLight,
-    borderRadius: radius.lg,
-    borderLeftWidth: 4,
-    borderLeftColor: colors.info,
+    backgroundColor: colors.neutral[0],
+    borderRadius: 16,
+    borderLeftWidth: 3,
+    borderLeftColor: "#667eea",
   },
-  infoIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: radius.md,
-    backgroundColor: "rgba(59, 130, 246, 0.1)",
+  infoIconBubble: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    backgroundColor: "rgba(102, 126, 234, 0.1)",
     alignItems: "center",
     justifyContent: "center",
     marginRight: spacing[3],
@@ -549,14 +690,15 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   infoTitle: {
-    ...textStyles.label,
-    color: colors.infoDark,
+    fontSize: 13,
+    fontWeight: "600",
+    color: colors.text.primary,
     marginBottom: spacing[1],
   },
   infoText: {
-    ...textStyles.caption,
-    color: colors.infoDark,
-    lineHeight: 20,
+    fontSize: 12,
+    color: colors.text.tertiary,
+    lineHeight: 18,
   },
 
   // Login Prompt
@@ -566,29 +708,31 @@ const styles = StyleSheet.create({
     marginHorizontal: layout.screenPaddingHorizontal,
     marginTop: spacing[6],
     backgroundColor: colors.neutral[0],
-    borderRadius: radius.xl,
+    borderRadius: 20,
     ...shadows.sm,
   },
   loginPromptTitle: {
-    ...textStyles.h4,
+    fontSize: 18,
+    fontWeight: "600",
     color: colors.text.primary,
     marginTop: spacing[4],
     marginBottom: spacing[2],
   },
   loginPromptText: {
-    ...textStyles.body,
+    fontSize: 14,
     color: colors.text.tertiary,
     textAlign: "center",
-    marginBottom: spacing[4],
+    marginBottom: spacing[5],
   },
   loginButton: {
-    backgroundColor: colors.primary[500],
+    backgroundColor: "#667eea",
     paddingHorizontal: spacing[8],
     paddingVertical: spacing[3],
-    borderRadius: radius.lg,
+    borderRadius: 12,
   },
   loginButtonText: {
-    ...textStyles.bodyMedium,
+    fontSize: 15,
+    fontWeight: "600",
     color: colors.text.inverse,
   },
 });

@@ -205,24 +205,24 @@ export default function Health() {
         contentContainerStyle={styles.container}
         showsVerticalScrollIndicator={false}
       >
-        {/* Compact Header */}
+        {/* Premium Header */}
         <LinearGradient
-          colors={colors.gradients.health}
+          colors={["#1a1a2e", "#16213e", "#0f3460"]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={styles.header}
         >
-          <View style={styles.headerContent}>
-            <View style={styles.headerIcon}>
-              <Ionicons name="heart" size={24} color={colors.neutral[0]} />
-            </View>
-            <View style={styles.headerText}>
-              <Text style={styles.headerTitle}>Health & Skincare</Text>
-              <Text style={styles.headerSubtitle}>
-                Your personalized routine
-              </Text>
-            </View>
+          <View style={styles.headerBadge}>
+            <Text style={styles.headerBadgeText}>💪</Text>
           </View>
+          <Text style={styles.headerTitle}>Wellness Hub</Text>
+          <Text style={styles.headerSubtitle}>
+            Personalized Skincare Routine
+          </Text>
+          <View style={styles.headerDivider} />
+          <Text style={styles.headerTagline}>
+            Build habits that transform your skin
+          </Text>
         </LinearGradient>
 
         {!hasData ? (
@@ -343,37 +343,50 @@ const styles = StyleSheet.create({
     paddingBottom: spacing[5],
   },
 
-  // Header
+  // Premium Header
   header: {
     paddingHorizontal: layout.screenPaddingHorizontal,
-    paddingVertical: spacing[5],
-    borderBottomLeftRadius: radius.xl,
-    borderBottomRightRadius: radius.xl,
-  },
-  headerContent: {
-    flexDirection: "row",
+    paddingVertical: spacing[7],
+    paddingBottom: spacing[8],
+    borderBottomLeftRadius: 32,
+    borderBottomRightRadius: 32,
     alignItems: "center",
   },
-  headerIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: radius.lg,
-    backgroundColor: "rgba(255,255,255,0.2)",
+  headerBadge: {
+    width: 56,
+    height: 56,
+    borderRadius: 16,
+    backgroundColor: "rgba(255,255,255,0.15)",
     alignItems: "center",
     justifyContent: "center",
-    marginRight: spacing[4],
+    marginBottom: spacing[3],
   },
-  headerText: {
-    flex: 1,
+  headerBadgeText: {
+    fontSize: 28,
   },
   headerTitle: {
-    ...textStyles.h3,
+    fontSize: 28,
+    fontWeight: "800",
     color: colors.neutral[0],
-    marginBottom: spacing[0.5],
+    letterSpacing: -0.5,
   },
   headerSubtitle: {
-    ...textStyles.body,
-    color: "rgba(255,255,255,0.9)",
+    fontSize: 14,
+    color: "rgba(255,255,255,0.7)",
+    marginTop: spacing[1],
+    letterSpacing: 0.5,
+  },
+  headerDivider: {
+    width: 40,
+    height: 2,
+    backgroundColor: "rgba(255,255,255,0.3)",
+    marginVertical: spacing[3],
+    borderRadius: 1,
+  },
+  headerTagline: {
+    fontSize: 12,
+    color: "rgba(255,255,255,0.6)",
+    fontStyle: "italic",
   },
 
   // Empty State
