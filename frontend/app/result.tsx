@@ -64,7 +64,7 @@ function ScoreCircle({ score }: { score: number }) {
   );
 }
 
-// Info pill component
+// Info pill component - now with full gradient background
 function InfoPill({ icon, label, value, gradientColors }: {
   icon: string;
   label: string;
@@ -72,31 +72,43 @@ function InfoPill({ icon, label, value, gradientColors }: {
   gradientColors: readonly [string, string];
 }) {
   return (
-    <View style={styles.infoPill}>
-      <LinearGradient colors={gradientColors} style={styles.infoPillIcon}>
-        <Ionicons name={icon as any} size={18} color={colors.neutral[0]} />
-      </LinearGradient>
+    <LinearGradient
+      colors={gradientColors}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 1, y: 1 }}
+      style={styles.infoPill}
+    >
+      <View style={styles.infoPillIcon}>
+        <Ionicons name={icon as any} size={20} color={colors.neutral[0]} />
+      </View>
       <View style={styles.infoPillContent}>
         <Text style={styles.infoPillLabel}>{label}</Text>
         <Text style={styles.infoPillValue}>{value}</Text>
       </View>
-    </View>
+    </LinearGradient>
   );
 }
 
-// Finding item
+// Finding item with gradient left accent
 function FindingItem({ item, type }: { item: string; type: 'issue' | 'positive' }) {
   const isPositive = type === 'positive';
-  const iconColor = isPositive ? colors.accent[500] : colors.warning;
-  const bgColor = isPositive ? colors.accent[50] : colors.warningLight;
+  const accentColors = isPositive
+    ? ["#10b981", "#059669"]
+    : ["#f59e0b", "#d97706"];
 
   return (
-    <View style={[styles.findingItem, { backgroundColor: bgColor }]}>
-      <View style={styles.findingIcon}>
+    <View style={styles.findingItem}>
+      <LinearGradient
+        colors={accentColors as any}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 0, y: 1 }}
+        style={styles.findingAccent}
+      />
+      <View style={[styles.findingIcon, { backgroundColor: isPositive ? "#dcfce7" : "#fef3c7" }]}>
         <Ionicons
           name={isPositive ? "checkmark-circle" : "alert-circle"}
           size={20}
-          color={iconColor}
+          color={isPositive ? "#10b981" : "#f59e0b"}
         />
       </View>
       <Text style={styles.findingText}>{item}</Text>
@@ -397,7 +409,7 @@ const styles = StyleSheet.create({
     color: colors.neutral[0],
   },
 
-  // Info Pills
+  // Info Pills - now with gradient background
   infoPills: {
     flexDirection: "row",
     gap: spacing[3],
@@ -407,15 +419,15 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: colors.neutral[0],
-    padding: spacing[3],
-    borderRadius: radius.lg,
-    ...shadows.sm,
+    padding: spacing[4],
+    borderRadius: 16,
+    ...shadows.md,
   },
   infoPillIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: radius.md,
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: "rgba(255,255,255,0.25)",
     alignItems: "center",
     justifyContent: "center",
     marginRight: spacing[3],
@@ -424,12 +436,14 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   infoPillLabel: {
-    ...textStyles.caption,
-    color: colors.text.tertiary,
+    fontSize: 11,
+    color: "rgba(255,255,255,0.8)",
+    marginBottom: spacing[0.5],
   },
   infoPillValue: {
-    ...textStyles.bodyMedium,
-    color: colors.text.primary,
+    fontSize: 16,
+    fontWeight: "700",
+    color: colors.neutral[0],
     textTransform: "capitalize",
   },
 
@@ -440,40 +454,42 @@ const styles = StyleSheet.create({
     gap: spacing[3],
     backgroundColor: colors.infoLight,
     padding: spacing[4],
-    borderRadius: radius.lg,
+    borderRadius: 16,
     marginBottom: spacing[5],
     borderLeftWidth: 4,
     borderLeftColor: colors.info,
   },
   conditionText: {
-    ...textStyles.body,
+    fontSize: 14,
     color: colors.infoDark,
     flex: 1,
+    lineHeight: 20,
   },
 
-  // Quick Actions
+  // Quick Actions - with gradient backgrounds
   quickActions: {
     flexDirection: "row",
     justifyContent: "space-around",
     backgroundColor: colors.neutral[0],
     padding: spacing[4],
-    borderRadius: radius.xl,
+    borderRadius: 20,
     marginBottom: spacing[6],
-    ...shadows.sm,
+    ...shadows.md,
   },
   quickAction: {
     alignItems: "center",
     gap: spacing[2],
   },
   quickActionIcon: {
-    width: 52,
-    height: 52,
-    borderRadius: radius.lg,
+    width: 56,
+    height: 56,
+    borderRadius: 16,
     alignItems: "center",
     justifyContent: "center",
   },
   quickActionLabel: {
-    ...textStyles.captionMedium,
+    fontSize: 12,
+    fontWeight: "600",
     color: colors.text.secondary,
   },
 
@@ -488,32 +504,46 @@ const styles = StyleSheet.create({
     marginBottom: spacing[4],
   },
   sectionTitle: {
-    ...textStyles.h4,
+    fontSize: 18,
+    fontWeight: "700",
     color: colors.text.primary,
   },
 
-  // Findings
+  // Findings with left accent
   findingsContainer: {
     gap: spacing[3],
   },
   findingItem: {
     flexDirection: "row",
-    alignItems: "flex-start",
-    padding: spacing[4],
-    borderRadius: radius.lg,
+    alignItems: "center",
+    backgroundColor: colors.neutral[0],
+    borderRadius: 16,
+    overflow: "hidden",
+    ...shadows.sm,
+  },
+  findingAccent: {
+    width: 5,
+    height: "100%",
   },
   findingIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    alignItems: "center",
+    justifyContent: "center",
+    marginLeft: spacing[3],
     marginRight: spacing[3],
-    marginTop: 2,
   },
   findingText: {
-    ...textStyles.body,
+    fontSize: 14,
     color: colors.text.primary,
     flex: 1,
-    lineHeight: 22,
+    lineHeight: 20,
+    paddingVertical: spacing[4],
+    paddingRight: spacing[4],
   },
 
-  // Recommendations
+  // Recommendations with numbered gradient badges
   recContainer: {
     gap: spacing[3],
   },
@@ -522,24 +552,25 @@ const styles = StyleSheet.create({
     alignItems: "flex-start",
     backgroundColor: colors.neutral[0],
     padding: spacing[4],
-    borderRadius: radius.lg,
-    ...shadows.sm,
+    borderRadius: 16,
+    ...shadows.md,
   },
   recNumber: {
-    width: 28,
-    height: 28,
-    borderRadius: radius.full,
-    backgroundColor: colors.primary[100],
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+    backgroundColor: "#667eea",
     alignItems: "center",
     justifyContent: "center",
     marginRight: spacing[3],
   },
   recNumberText: {
-    ...textStyles.captionMedium,
-    color: colors.primary[600],
+    fontSize: 14,
+    fontWeight: "700",
+    color: colors.neutral[0],
   },
   recText: {
-    ...textStyles.body,
+    fontSize: 14,
     color: colors.text.primary,
     flex: 1,
     lineHeight: 22,
@@ -558,7 +589,8 @@ const styles = StyleSheet.create({
     paddingVertical: spacing[3],
   },
   newAnalysisText: {
-    ...textStyles.label,
+    fontSize: 14,
+    fontWeight: "600",
     color: colors.primary[600],
   },
 
@@ -572,19 +604,20 @@ const styles = StyleSheet.create({
   emptyIcon: {
     width: 100,
     height: 100,
-    borderRadius: radius.full,
+    borderRadius: 50,
     backgroundColor: colors.neutral[100],
     alignItems: "center",
     justifyContent: "center",
     marginBottom: spacing[6],
   },
   emptyTitle: {
-    ...textStyles.h3,
+    fontSize: 22,
+    fontWeight: "700",
     color: colors.text.primary,
     marginBottom: spacing[2],
   },
   emptySubtitle: {
-    ...textStyles.body,
+    fontSize: 14,
     color: colors.text.secondary,
     textAlign: "center",
     marginBottom: spacing[6],

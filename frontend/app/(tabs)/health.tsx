@@ -31,6 +31,16 @@ function HabitCard({ item, index, isChecked, onToggle }: HabitCardProps) {
   const scaleAnim = useRef(new Animated.Value(1)).current;
   const checkAnim = useRef(new Animated.Value(isChecked ? 1 : 0)).current;
 
+  // Different accent colors for each habit
+  const accentColors = [
+    ["#667eea", "#764ba2"], // Purple
+    ["#f093fb", "#f5576c"], // Pink
+    ["#4facfe", "#00f2fe"], // Blue
+    ["#43e97b", "#38f9d7"], // Green
+    ["#fa709a", "#fee140"], // Warm
+  ];
+  const accent = accentColors[index % accentColors.length];
+
   useEffect(() => {
     Animated.timing(checkAnim, {
       toValue: isChecked ? 1 : 0,
@@ -55,11 +65,6 @@ function HabitCard({ item, index, isChecked, onToggle }: HabitCardProps) {
     onToggle();
   };
 
-  const checkboxBg = checkAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: [colors.neutral[200], colors.accent[500]],
-  });
-
   return (
     <Pressable onPress={handlePress}>
       <Animated.View
@@ -69,17 +74,28 @@ function HabitCard({ item, index, isChecked, onToggle }: HabitCardProps) {
           isChecked && styles.habitCardChecked,
         ]}
       >
-        <View style={styles.habitNumber}>
+        <LinearGradient
+          colors={accent as any}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 0, y: 1 }}
+          style={styles.habitAccent}
+        />
+        <View style={[styles.habitNumber, { backgroundColor: isChecked ? "#10b981" : accent[0] }]}>
           <Text style={styles.habitNumberText}>{index + 1}</Text>
         </View>
         <Text style={[styles.habitText, isChecked && styles.habitTextChecked]}>
           {item}
         </Text>
-        <Animated.View style={[styles.checkbox, { backgroundColor: checkboxBg }]}>
-          {isChecked && (
-            <Ionicons name="checkmark" size={16} color={colors.neutral[0]} />
-          )}
-        </Animated.View>
+        <View style={[
+          styles.checkbox,
+          { backgroundColor: isChecked ? "#10b981" : "rgba(0,0,0,0.05)" }
+        ]}>
+          <Ionicons
+            name={(isChecked ? "checkmark" : "ellipse-outline") as any}
+            size={18}
+            color={isChecked ? colors.neutral[0] : colors.neutral[300]}
+          />
+        </View>
       </Animated.View>
     </Pressable>
   );
@@ -525,11 +541,12 @@ const styles = StyleSheet.create({
     backgroundColor: "#EDE9FE",
   },
   sectionTitle: {
-    ...textStyles.h4,
+    fontSize: 18,
+    fontWeight: "700",
     color: colors.text.primary,
   },
   sectionSubtitle: {
-    ...textStyles.caption,
+    fontSize: 12,
     color: colors.text.tertiary,
   },
 
@@ -541,41 +558,49 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: colors.neutral[0],
-    borderRadius: radius.lg,
+    borderRadius: 16,
     padding: spacing[4],
-    ...shadows.sm,
-    borderWidth: 1,
-    borderColor: colors.border.light,
+    paddingLeft: spacing[0],
+    overflow: "hidden",
+    ...shadows.md,
   },
   habitCardChecked: {
-    backgroundColor: colors.accent[50],
-    borderColor: colors.accent[200],
+    backgroundColor: "#f0fdf4",
+  },
+  habitAccent: {
+    width: 5,
+    height: "100%",
+    marginRight: spacing[3],
+    borderTopLeftRadius: 16,
+    borderBottomLeftRadius: 16,
   },
   habitNumber: {
-    width: 28,
-    height: 28,
-    borderRadius: radius.md,
-    backgroundColor: colors.primary[100],
+    width: 32,
+    height: 32,
+    borderRadius: 10,
     alignItems: "center",
     justifyContent: "center",
     marginRight: spacing[3],
   },
   habitNumberText: {
-    ...textStyles.captionMedium,
-    color: colors.primary[600],
+    fontSize: 14,
+    fontWeight: "700",
+    color: colors.neutral[0],
   },
   habitText: {
-    ...textStyles.body,
+    fontSize: 14,
     color: colors.text.primary,
     flex: 1,
+    lineHeight: 20,
   },
   habitTextChecked: {
     color: colors.text.secondary,
+    textDecorationLine: "line-through",
   },
   checkbox: {
-    width: 28,
-    height: 28,
-    borderRadius: radius.md,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -588,16 +613,14 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "flex-start",
     backgroundColor: colors.neutral[0],
-    borderRadius: radius.lg,
+    borderRadius: 16,
     padding: spacing[4],
-    ...shadows.sm,
-    borderWidth: 1,
-    borderColor: colors.border.light,
+    ...shadows.md,
   },
   routineGradient: {
-    width: 44,
-    height: 44,
-    borderRadius: radius.lg,
+    width: 48,
+    height: 48,
+    borderRadius: 14,
     alignItems: "center",
     justifyContent: "center",
     marginRight: spacing[3],

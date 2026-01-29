@@ -28,24 +28,38 @@ interface StyleCardProps {
 
 function StyleCard({ item, type, index }: StyleCardProps) {
   const isClothing = type === "clothing";
-  const iconName = isClothing ? "shirt-outline" : "diamond-outline";
-  const gradientColors = isClothing
-    ? ["#F3E8FF", "#EDE9FE"] as const
-    : ["#FCE7F3", "#FBE7F3"] as const;
-  const iconColor = isClothing ? "#8B5CF6" : "#EC4899";
+
+  // Vibrant gradient colors for each card
+  const gradients = isClothing
+    ? [
+      ["#667eea", "#764ba2"],
+      ["#f093fb", "#f5576c"],
+      ["#4facfe", "#00f2fe"],
+      ["#43e97b", "#38f9d7"],
+    ]
+    : [
+      ["#fa709a", "#fee140"],
+      ["#a8edea", "#fed6e3"],
+      ["#fbc2eb", "#a6c1ee"],
+    ];
+
+  const gradient = gradients[index % gradients.length];
+  const iconName = isClothing ? "shirt" : "diamond";
 
   return (
     <View style={styles.styleCard}>
       <LinearGradient
-        colors={gradientColors}
-        style={styles.styleCardGradient}
+        colors={gradient as any}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.styleIconGradient}
       >
-        <View style={[styles.styleIcon, { backgroundColor: colors.neutral[0] }]}>
-          <Ionicons name={iconName} size={22} color={iconColor} />
-        </View>
-        <Text style={styles.styleText}>{item}</Text>
-        <Ionicons name="chevron-forward" size={20} color={colors.neutral[400]} />
+        <Ionicons name={iconName} size={20} color={colors.neutral[0]} />
       </LinearGradient>
+      <Text style={styles.styleText}>{item}</Text>
+      <View style={styles.styleArrow}>
+        <Ionicons name="chevron-forward" size={18} color={colors.neutral[300]} />
+      </View>
     </View>
   );
 }
@@ -578,27 +592,34 @@ const styles = StyleSheet.create({
     gap: spacing[3],
   },
   styleCard: {
-    borderRadius: radius.lg,
-    overflow: "hidden",
-    ...shadows.sm,
-  },
-  styleCardGradient: {
     flexDirection: "row",
     alignItems: "center",
+    backgroundColor: colors.neutral[0],
+    borderRadius: 16,
     padding: spacing[4],
+    ...shadows.md,
   },
-  styleIcon: {
+  styleIconGradient: {
     width: 44,
     height: 44,
-    borderRadius: radius.lg,
+    borderRadius: 12,
     alignItems: "center",
     justifyContent: "center",
     marginRight: spacing[3],
   },
   styleText: {
-    ...textStyles.body,
+    fontSize: 14,
     color: colors.text.primary,
     flex: 1,
+    lineHeight: 20,
+  },
+  styleArrow: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: "rgba(0,0,0,0.04)",
+    alignItems: "center",
+    justifyContent: "center",
   },
 
   // Tip Card
@@ -608,14 +629,14 @@ const styles = StyleSheet.create({
     marginTop: spacing[6],
     padding: spacing[4],
     backgroundColor: "#F5F3FF",
-    borderRadius: radius.lg,
+    borderRadius: 16,
     borderLeftWidth: 4,
     borderLeftColor: "#8B5CF6",
   },
   tipIcon: {
     width: 40,
     height: 40,
-    borderRadius: radius.md,
+    borderRadius: 12,
     backgroundColor: "#EDE9FE",
     alignItems: "center",
     justifyContent: "center",
@@ -625,14 +646,15 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   tipTitle: {
-    ...textStyles.label,
+    fontSize: 13,
+    fontWeight: "600",
     color: "#5B21B6",
     marginBottom: spacing[1],
   },
   tipText: {
-    ...textStyles.caption,
+    fontSize: 12,
     color: "#5B21B6",
-    lineHeight: 20,
+    lineHeight: 18,
   },
 
   // Products Section
@@ -647,11 +669,12 @@ const styles = StyleSheet.create({
     marginBottom: spacing[1],
   },
   productsTitle: {
-    ...textStyles.h4,
+    fontSize: 18,
+    fontWeight: "700",
     color: colors.text.primary,
   },
   productsSubtitle: {
-    ...textStyles.caption,
+    fontSize: 12,
     color: colors.text.tertiary,
     marginBottom: spacing[4],
   },

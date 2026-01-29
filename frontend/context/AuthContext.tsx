@@ -81,9 +81,54 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             ]);
 
             if (storedToken && storedProfile) {
+                // First, set the stored data to show UI immediately
+                const profile = JSON.parse(storedProfile);
+                setUser(profile);
                 setToken(storedToken);
-                setUser(JSON.parse(storedProfile));
                 api.defaults.headers.common["Authorization"] = `Bearer ${storedToken}`;
+
+                // Then try to silently refresh the token in the background
+                // This handles expired tokens without requiring manual re-login
+                try {
+                    // Get fresh tokens silently - this will throw SIGN_IN_REQUIRED if not logged in
+                    const silentResult = await GoogleSignin.signInSilently();
+                    const freshToken = silentResult?.data?.idToken || (silentResult as any)?.idToken;
+
+                    if (freshToken && freshToken !== storedToken) {
+                        console.log("Refreshed expired token silently");
+
+                        // Verify with backend and update
+                        const response = await api.post("/auth/verify", { id_token: freshToken });
+
+                        if (response.data.valid && response.data.user) {
+                            const freshProfile = response.data.user;
+
+                            setToken(freshToken);
+                            setUser(freshProfile);
+                            api.defaults.headers.common["Authorization"] = `Bearer ${freshToken}`;
+
+                            await Promise.all([
+                                AsyncStorage.setItem(AUTH_TOKEN_KEY, freshToken),
+                                AsyncStorage.setItem(USER_PROFILE_KEY, JSON.stringify(freshProfile)),
+                            ]);
+                        }
+                    }
+                } catch (refreshError: any) {
+                    // Check if it's a "sign in required" error - user needs to re-authenticate
+                    if (refreshError?.code === statusCodes.SIGN_IN_REQUIRED) {
+                        console.warn("User session expired, re-login required");
+                        setUser(null);
+                        setToken(null);
+                        delete api.defaults.headers.common["Authorization"];
+                        await Promise.all([
+                            AsyncStorage.removeItem(AUTH_TOKEN_KEY),
+                            AsyncStorage.removeItem(USER_PROFILE_KEY),
+                        ]);
+                    } else {
+                        // Other errors (network issues, etc) - keep existing auth and let API calls handle it
+                        console.warn("Silent token refresh failed:", refreshError);
+                    }
+                }
             }
         } catch (e) {
             console.error("Failed to load stored auth:", e);

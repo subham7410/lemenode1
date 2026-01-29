@@ -46,7 +46,7 @@ function StatCard({ icon, iconColor, iconBgColor, label, value }: StatCardProps)
   );
 }
 
-// Action row component
+// Action row component with gradient icon
 interface ActionRowProps {
   icon: string;
   iconColor: string;
@@ -56,7 +56,21 @@ interface ActionRowProps {
   destructive?: boolean;
 }
 
+// Icon gradient mapping for visual variety
+const iconGradients: Record<string, [string, string]> = {
+  "analytics-outline": ["#10b981", "#059669"],
+  "trophy-outline": ["#f59e0b", "#d97706"],
+  "notifications-outline": ["#8B5CF6", "#7C3AED"],
+  "create-outline": ["#3b82f6", "#2563eb"],
+  "chatbubble-ellipses-outline": ["#06b6d4", "#0891b2"],
+  "shield-checkmark-outline": ["#6366f1", "#4f46e5"],
+  "trash-outline": ["#ef4444", "#dc2626"],
+  "log-out-outline": ["#f43f5e", "#e11d48"],
+};
+
 function ActionRow({ icon, iconColor, title, subtitle, onPress, destructive }: ActionRowProps) {
+  const gradient = iconGradients[icon] || ["#667eea", "#764ba2"];
+
   return (
     <Pressable
       style={({ pressed }) => [
@@ -65,16 +79,23 @@ function ActionRow({ icon, iconColor, title, subtitle, onPress, destructive }: A
       ]}
       onPress={onPress}
     >
-      <View style={[styles.actionIcon, { backgroundColor: destructive ? colors.errorLight : colors.neutral[100] }]}>
-        <Ionicons name={icon as any} size={22} color={iconColor} />
-      </View>
+      <LinearGradient
+        colors={destructive ? ["#fecaca", "#fee2e2"] : gradient}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.actionIcon}
+      >
+        <Ionicons name={icon as any} size={20} color={destructive ? colors.error : colors.neutral[0]} />
+      </LinearGradient>
       <View style={styles.actionContent}>
         <Text style={[styles.actionTitle, destructive && styles.actionTitleDestructive]}>
           {title}
         </Text>
         {subtitle && <Text style={styles.actionSubtitle}>{subtitle}</Text>}
       </View>
-      <Ionicons name="chevron-forward" size={20} color={colors.neutral[300]} />
+      <View style={styles.actionArrow}>
+        <Ionicons name="chevron-forward" size={16} color={colors.neutral[400]} />
+      </View>
     </Pressable>
   );
 }
@@ -160,7 +181,7 @@ export default function Profile() {
   return (
     <SafeAreaView style={styles.safe} edges={["top"]}>
       <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
-        {/* Premium Header with Avatar */}
+        {/* Premium Header with User Info */}
         <LinearGradient
           colors={["#1a1a2e", "#16213e", "#0f3460"]}
           start={{ x: 0, y: 0 }}
@@ -168,16 +189,25 @@ export default function Profile() {
           style={styles.header}
         >
           <View style={styles.avatarContainer}>
-            <View style={styles.avatar}>
-              <Ionicons name="person" size={40} color={colors.neutral[0]} />
-            </View>
+            {authUser?.photo_url ? (
+              <Image source={{ uri: authUser.photo_url }} style={styles.avatar} />
+            ) : (
+              <View style={styles.avatarPlaceholder}>
+                <Ionicons name="person" size={32} color={colors.neutral[0]} />
+              </View>
+            )}
             {score && (
               <View style={[styles.scoreBadge, { backgroundColor: getScoreColor(score) }]}>
                 <Text style={styles.scoreText}>{score}</Text>
               </View>
             )}
           </View>
-          <Text style={styles.headerTitle}>Your Profile</Text>
+          <Text style={styles.headerTitle}>
+            {authUser?.display_name || "Guest User"}
+          </Text>
+          {authUser?.email && (
+            <Text style={styles.headerEmail}>{authUser.email}</Text>
+          )}
           {score && (
             <View style={styles.scoreStatus}>
               <Text style={styles.scoreStatusText}>Skin Score: {getScoreLabel(score)}</Text>
@@ -185,36 +215,44 @@ export default function Profile() {
           )}
         </LinearGradient>
 
-        {/* Quick Stats */}
-        <View style={styles.statsGrid}>
-          <StatCard
-            icon="calendar"
-            iconColor={colors.primary[600]}
-            iconBgColor={colors.primary[100]}
-            label="Age"
-            value={user.age ? `${user.age} yrs` : "—"}
-          />
-          <StatCard
-            icon="person-outline"
-            iconColor={colors.accent[600]}
-            iconBgColor={colors.accent[100]}
-            label="Gender"
-            value={user.gender ? user.gender.charAt(0).toUpperCase() + user.gender.slice(1) : "—"}
-          />
-          <StatCard
-            icon="resize"
-            iconColor={colors.warning}
-            iconBgColor={colors.warningLight}
-            label="Height"
-            value={user.height ? `${user.height} cm` : "—"}
-          />
-          <StatCard
-            icon="fitness"
-            iconColor={colors.error}
-            iconBgColor={colors.errorLight}
-            label="Weight"
-            value={user.weight ? `${user.weight} kg` : "—"}
-          />
+        {/* Compact Stats Row */}
+        <View style={styles.compactStats}>
+          <View style={styles.compactStatItem}>
+            <Ionicons name="calendar" size={16} color={colors.primary[500]} />
+            <Text style={styles.compactStatValue}>{user.age || "—"}</Text>
+            <Text style={styles.compactStatLabel}>yrs</Text>
+          </View>
+          <View style={styles.compactStatDivider} />
+          <View style={styles.compactStatItem}>
+            <Ionicons name="person" size={16} color={colors.accent[500]} />
+            <Text style={styles.compactStatValue}>
+              {user.gender ? user.gender.charAt(0).toUpperCase() : "—"}
+            </Text>
+          </View>
+          <View style={styles.compactStatDivider} />
+          <View style={styles.compactStatItem}>
+            <Ionicons name="resize" size={16} color={colors.warning} />
+            <Text style={styles.compactStatValue}>{user.height || "—"}</Text>
+            <Text style={styles.compactStatLabel}>cm</Text>
+          </View>
+          <View style={styles.compactStatDivider} />
+          <View style={styles.compactStatItem}>
+            <Ionicons name="fitness" size={16} color={colors.error} />
+            <Text style={styles.compactStatValue}>{user.weight || "—"}</Text>
+            <Text style={styles.compactStatLabel}>kg</Text>
+          </View>
+          {bmi && (
+            <>
+              <View style={styles.compactStatDivider} />
+              <View style={styles.compactStatItem}>
+                <Ionicons name="speedometer" size={16} color="#8B5CF6" />
+                <Text style={styles.compactStatValue}>{bmi}</Text>
+                <View style={[styles.bmiMiniTag, { backgroundColor: bmiCategory?.color }]}>
+                  <Text style={styles.bmiMiniText}>{bmiCategory?.label}</Text>
+                </View>
+              </View>
+            </>
+          )}
         </View>
 
         {/* Streak Section */}
@@ -226,34 +264,6 @@ export default function Profile() {
             />
           </View>
         ) : null}
-
-        {/* BMI Card */}
-        {bmi && (
-          <View style={styles.bmiCard}>
-            <View style={styles.bmiContent}>
-              <View style={styles.bmiHeader}>
-                <Ionicons name="speedometer" size={22} color="#8B5CF6" />
-                <Text style={styles.bmiTitle}>Body Mass Index</Text>
-              </View>
-              <View style={styles.bmiValueRow}>
-                <Text style={styles.bmiValue}>{bmi}</Text>
-                <View style={[styles.bmiCategoryBadge, { backgroundColor: bmiCategory?.color }]}>
-                  <Text style={styles.bmiCategoryText}>{bmiCategory?.label}</Text>
-                </View>
-              </View>
-            </View>
-            <View style={styles.bmiScale}>
-              <View style={styles.bmiScaleBar}>
-                <View style={[styles.bmiIndicator, { left: `${Math.min((parseFloat(bmi) / 40) * 100, 100)}%` }]} />
-              </View>
-              <View style={styles.bmiLabels}>
-                <Text style={styles.bmiLabel}>18.5</Text>
-                <Text style={styles.bmiLabel}>25</Text>
-                <Text style={styles.bmiLabel}>30</Text>
-              </View>
-            </View>
-          </View>
-        )}
 
         {/* Diet & Ethnicity */}
         <View style={styles.infoSection}>
@@ -282,27 +292,29 @@ export default function Profile() {
         </View>
 
         {/* Current Analysis */}
-        {analysis && (
-          <View style={styles.analysisSection}>
-            <Text style={styles.sectionTitle}>Current Analysis</Text>
-            <View style={styles.analysisCard}>
-              <View style={styles.analysisRow}>
-                <Text style={styles.analysisLabel}>Skin Type</Text>
-                <Text style={styles.analysisValue}>{analysis.skin_type || "—"}</Text>
-              </View>
-              <View style={styles.analysisDivider} />
-              <View style={styles.analysisRow}>
-                <Text style={styles.analysisLabel}>Skin Tone</Text>
-                <Text style={styles.analysisValue}>{analysis.skin_tone || "—"}</Text>
-              </View>
-              <View style={styles.analysisDivider} />
-              <View style={styles.analysisRow}>
-                <Text style={styles.analysisLabel}>Condition</Text>
-                <Text style={styles.analysisValue}>{analysis.overall_condition || "—"}</Text>
+        {
+          analysis && (
+            <View style={styles.analysisSection}>
+              <Text style={styles.sectionTitle}>Current Analysis</Text>
+              <View style={styles.analysisCard}>
+                <View style={styles.analysisRow}>
+                  <Text style={styles.analysisLabel}>Skin Type</Text>
+                  <Text style={styles.analysisValue}>{analysis.skin_type || "—"}</Text>
+                </View>
+                <View style={styles.analysisDivider} />
+                <View style={styles.analysisRow}>
+                  <Text style={styles.analysisLabel}>Skin Tone</Text>
+                  <Text style={styles.analysisValue}>{analysis.skin_tone || "—"}</Text>
+                </View>
+                <View style={styles.analysisDivider} />
+                <View style={styles.analysisRow}>
+                  <Text style={styles.analysisLabel}>Condition</Text>
+                  <Text style={styles.analysisValue}>{analysis.overall_condition || "—"}</Text>
+                </View>
               </View>
             </View>
-          </View>
-        )}
+          )
+        }
 
         {/* Account Section */}
         <View style={styles.actionsSection}>
@@ -435,8 +447,8 @@ export default function Profile() {
         </View>
 
         <View style={{ height: spacing[10] }} />
-      </ScrollView>
-    </SafeAreaView>
+      </ScrollView >
+    </SafeAreaView >
   );
 }
 
@@ -489,9 +501,15 @@ const styles = StyleSheet.create({
     color: colors.neutral[0],
   },
   headerTitle: {
-    ...textStyles.h3,
+    fontSize: 22,
+    fontWeight: "700",
     color: colors.neutral[0],
-    marginBottom: spacing[2],
+    marginBottom: spacing[1],
+  },
+  headerEmail: {
+    fontSize: 13,
+    color: "rgba(255,255,255,0.7)",
+    marginBottom: spacing[3],
   },
   scoreStatus: {
     paddingHorizontal: spacing[4],
@@ -500,11 +518,67 @@ const styles = StyleSheet.create({
     borderRadius: radius.full,
   },
   scoreStatusText: {
-    ...textStyles.captionMedium,
+    fontSize: 12,
+    fontWeight: "600",
+    color: colors.neutral[0],
+  },
+  avatarPlaceholder: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: "rgba(255,255,255,0.2)",
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 3,
+    borderColor: colors.neutral[0],
+  },
+
+  // Compact Stats Row
+  compactStats: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: colors.neutral[0],
+    marginHorizontal: layout.screenPaddingHorizontal,
+    marginTop: -spacing[5],
+    paddingVertical: spacing[3],
+    paddingHorizontal: spacing[4],
+    borderRadius: 16,
+    gap: spacing[2],
+    ...shadows.md,
+  },
+  compactStatItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+  },
+  compactStatValue: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: colors.text.primary,
+  },
+  compactStatLabel: {
+    fontSize: 10,
+    color: colors.text.tertiary,
+  },
+  compactStatDivider: {
+    width: 1,
+    height: 16,
+    backgroundColor: colors.border.light,
+  },
+  bmiMiniTag: {
+    paddingHorizontal: spacing[2],
+    paddingVertical: 2,
+    borderRadius: 6,
+    marginLeft: spacing[1],
+  },
+  bmiMiniText: {
+    fontSize: 9,
+    fontWeight: "600",
     color: colors.neutral[0],
   },
 
-  // Stats Grid
+  // Stats Grid (kept for reference)
   statsGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
@@ -516,25 +590,26 @@ const styles = StyleSheet.create({
     width: "47%",
     backgroundColor: colors.neutral[0],
     borderRadius: radius.lg,
-    padding: spacing[4],
+    padding: spacing[3],
     alignItems: "center",
-    ...shadows.md,
+    ...shadows.sm,
   },
   statIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: radius.lg,
+    width: 36,
+    height: 36,
+    borderRadius: radius.md,
     alignItems: "center",
     justifyContent: "center",
     marginBottom: spacing[2],
   },
   statLabel: {
-    ...textStyles.caption,
+    fontSize: 11,
     color: colors.text.tertiary,
-    marginBottom: spacing[1],
+    marginBottom: spacing[0.5],
   },
   statValue: {
-    ...textStyles.h4,
+    fontSize: 14,
+    fontWeight: "600",
     color: colors.text.primary,
     textTransform: "capitalize",
   },
@@ -712,7 +787,7 @@ const styles = StyleSheet.create({
   actionIcon: {
     width: 44,
     height: 44,
-    borderRadius: radius.lg,
+    borderRadius: 12,
     alignItems: "center",
     justifyContent: "center",
     marginRight: spacing[3],
@@ -721,16 +796,25 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   actionTitle: {
-    ...textStyles.bodyMedium,
+    fontSize: 15,
+    fontWeight: "600",
     color: colors.text.primary,
   },
   actionTitleDestructive: {
     color: colors.error,
   },
   actionSubtitle: {
-    ...textStyles.caption,
+    fontSize: 12,
     color: colors.text.tertiary,
     marginTop: spacing[0.5],
+  },
+  actionArrow: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: "rgba(0,0,0,0.04)",
+    alignItems: "center",
+    justifyContent: "center",
   },
   actionDivider: {
     height: 1,
