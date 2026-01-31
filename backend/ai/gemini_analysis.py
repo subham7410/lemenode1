@@ -255,11 +255,9 @@ RETURN STRICT JSON FORMAT (no markdown, no commentary):
   }},
   
   "style": {{
-    "best_colors": [
-      "3-4 specific colors that would complement their skin tone"
-    ],
-    "avoid_colors": [
-      "2-3 colors that might wash them out or clash"
+    "color_palette": [
+      {{ "name": "Color Name", "hex": "#RRGGBB", "type": "recommended", "reason": "Reason why this suits them" }},
+      {{ "name": "Color Name", "hex": "#RRGGBB", "type": "avoid", "reason": "Reason to avoid" }}
     ],
     "clothing_tips": [
       "2-3 clothing fabric or style tips related to skin health"
@@ -287,6 +285,7 @@ CRITICAL RULES:
 5. Be CREATIVE - don't repeat the same advice everyone gives
 6. PERSONALIZE - use their age, diet, BMI in your recommendations
 7. NO PLACEHOLDERS - every field must have real, specific content
+8. HEX CODES - provide valid, vibrant hex codes for the color palette
 """
 
         # Call Gemini API with retry logic
@@ -423,24 +422,24 @@ def validate_and_fix_response(data: Dict[str, Any], user: Dict[str, Any]) -> Dic
     # ============================================================
     if "style" not in data or not isinstance(data.get("style"), dict):
         data["style"] = {
-            "best_colors": [],
-            "avoid_colors": [],
+            "color_palette": [],
             "clothing_tips": [],
             "clothing": [],
             "accessories": []
         }
     else:
         # Ensure all fields exist
-        for field in ["best_colors", "avoid_colors", "clothing_tips", "accessories"]:
-            if field not in data["style"]:
-                data["style"][field] = []
+        if "color_palette" not in data["style"]:
+            data["style"]["color_palette"] = []
+        
+        if "accessories" not in data["style"]:
+            data["style"]["accessories"] = []
+            
+        if "clothing_tips" not in data["style"]:
+            data["style"]["clothing_tips"] = []
         
         # Build clothing array for frontend compatibility
         clothing = []
-        if data["style"].get("best_colors"):
-            clothing.append(f"Best colors: {', '.join(data['style']['best_colors'][:3])}")
-        if data["style"].get("avoid_colors"):
-            clothing.append(f"Avoid colors: {', '.join(data['style']['avoid_colors'][:2])}")
         if data["style"].get("clothing_tips"):
             clothing.extend(data["style"]["clothing_tips"])
         
