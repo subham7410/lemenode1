@@ -49,6 +49,12 @@ export type Analysis = {
   style?: {
     clothing: string[];
     accessories: string[];
+    color_palette?: {
+      name: string;
+      hex: string;
+      type: "recommended" | "avoid";
+      reason?: string;
+    }[];
   };
 };
 

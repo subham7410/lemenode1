@@ -126,7 +126,14 @@ export default function FoodLogCard({
                         {categoryLabel}
                     </Text>
                 </View>
-                <Text style={styles.time}>{formatTime(loggedAt)}</Text>
+                <View style={styles.headerRight}>
+                    <Text style={styles.time}>{formatTime(loggedAt)}</Text>
+                    {onDelete && (
+                        <Pressable style={styles.deleteButton} onPress={handleDelete}>
+                            <Ionicons name="trash-outline" size={16} color={colors.error} />
+                        </Pressable>
+                    )}
+                </View>
             </View>
 
             {/* Food Name */}
@@ -168,12 +175,6 @@ export default function FoodLogCard({
                 </View>
             )}
 
-            {/* Delete Button */}
-            {onDelete && (
-                <Pressable style={styles.deleteButton} onPress={handleDelete}>
-                    <Ionicons name="trash-outline" size={16} color={colors.error} />
-                </Pressable>
-            )}
         </View>
     );
 }
@@ -185,7 +186,6 @@ const styles = StyleSheet.create({
         borderLeftWidth: 4,
         padding: spacing[4],
         ...shadows.sm,
-        position: "relative",
     },
     header: {
         flexDirection: "row",
@@ -208,6 +208,11 @@ const styles = StyleSheet.create({
     time: {
         ...textStyles.caption,
         color: colors.text.tertiary,
+    },
+    headerRight: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: spacing[2],
     },
     foodName: {
         ...textStyles.h4,
@@ -270,10 +275,7 @@ const styles = StyleSheet.create({
         lineHeight: 18,
     },
     deleteButton: {
-        position: "absolute",
-        top: spacing[2],
-        right: spacing[2],
-        padding: spacing[2],
+        padding: spacing[1],
     },
 
     // Compact styles

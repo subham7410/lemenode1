@@ -181,30 +181,54 @@ export default function Health() {
   const routine: string[] = analysis?.health?.routine ?? [];
   const hasData = dailyHabits.length > 0 || routine.length > 0;
 
-  // Load checked state from storage
+  // Generate a hash of habits to detect when they change (new scan)
+  const getHabitsHash = (habits: string[]) => habits.join('||');
+
+  // Load checked state from storage with date and analysis awareness
   useEffect(() => {
     const loadChecked = async () => {
       try {
-        const stored = await AsyncStorage.getItem("@checked_habits");
+        const today = new Date().toISOString().split('T')[0];
+        const currentHash = getHabitsHash(dailyHabits);
+
+        const stored = await AsyncStorage.getItem("@checked_habits_v2");
         if (stored) {
-          setCheckedHabits(JSON.parse(stored));
+          const state = JSON.parse(stored);
+          // Only restore if same day AND same habits (no new scan with different recommendations)
+          if (state.date === today && state.habitsHash === currentHash) {
+            setCheckedHabits(state.checked || {});
+          } else {
+            // Reset for new day or changed habits
+            setCheckedHabits({});
+          }
         }
       } catch (e) {
         console.log("Failed to load habits", e);
       }
     };
-    loadChecked();
-  }, []);
 
-  // Save checked state
+    // Only load when we have habits to track
+    if (dailyHabits.length > 0) {
+      loadChecked();
+    }
+  }, [dailyHabits]);
+
+  // Save checked state with date and habits hash
   const toggleHabit = async (index: number) => {
     const newChecked = {
       ...checkedHabits,
       [index]: !checkedHabits[index],
     };
     setCheckedHabits(newChecked);
+
     try {
-      await AsyncStorage.setItem("@checked_habits", JSON.stringify(newChecked));
+      const today = new Date().toISOString().split('T')[0];
+      const state = {
+        date: today,
+        habitsHash: getHabitsHash(dailyHabits),
+        checked: newChecked,
+      };
+      await AsyncStorage.setItem("@checked_habits_v2", JSON.stringify(state));
     } catch (e) {
       console.log("Failed to save habits", e);
     }

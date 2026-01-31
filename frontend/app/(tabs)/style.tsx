@@ -112,19 +112,35 @@ export default function Style() {
 
   // Dynamic color palettes based on skin tone
   const getColorPalette = () => {
-    // Fair/Light skin tones
+    // 1. AI-Generated Palette (Prioritize this)
+    if (analysis?.style?.color_palette && analysis.style.color_palette.length > 0) {
+      const palette = analysis.style.color_palette;
+      const recommended = palette
+        .filter(c => c.type === 'recommended')
+        .map(c => ({ color: c.hex, name: c.name, reason: c.reason }));
+
+      const avoid = palette
+        .filter(c => c.type === 'avoid')
+        .map(c => ({ color: c.hex, name: c.name, reason: c.reason }));
+
+      if (recommended.length > 0) {
+        return { recommended, avoid };
+      }
+    }
+
+    // 2. Fallback: Fair/Light skin tones
     if (skinTone.includes("fair") || skinTone.includes("light") || skinTone.includes("pale")) {
       return {
         recommended: [
-          { color: "#E11D48", name: "Rose" },
-          { color: "#7C3AED", name: "Violet" },
-          { color: "#0EA5E9", name: "Sky Blue" },
-          { color: "#10B981", name: "Emerald" },
-          { color: "#EC4899", name: "Pink" },
+          { color: "#E11D48", name: "Rose", reason: "Adds warmth to cool undertones" },
+          { color: "#7C3AED", name: "Violet", reason: "Contrasts beautifully with fair skin" },
+          { color: "#0EA5E9", name: "Sky Blue", reason: "Enhances natural brightness" },
+          { color: "#10B981", name: "Emerald", reason: "Provides a striking contrast" },
+          { color: "#EC4899", name: "Pink", reason: "Soft and flattering" },
         ],
         avoid: [
-          { color: "#FEF3C7", name: "Pale Yellow" },
-          { color: "#FED7AA", name: "Peach" },
+          { color: "#FEF3C7", name: "Pale Yellow", reason: "Can wash out fair skin" },
+          { color: "#FED7AA", name: "Peach", reason: "May lack sufficient contrast" },
         ],
       };
     }
@@ -133,15 +149,15 @@ export default function Style() {
     if (skinTone.includes("medium") || skinTone.includes("olive") || skinTone.includes("wheat")) {
       return {
         recommended: [
-          { color: "#059669", name: "Jade" },
-          { color: "#7C3AED", name: "Purple" },
-          { color: "#DC2626", name: "Red" },
-          { color: "#0284C7", name: "Ocean" },
-          { color: "#F59E0B", name: "Amber" },
+          { color: "#059669", name: "Jade", reason: "Complements olive undertones" },
+          { color: "#7C3AED", name: "Purple", reason: "Rich contrast for medium skin" },
+          { color: "#DC2626", name: "Red", reason: "Bring out natural warmth" },
+          { color: "#0284C7", name: "Ocean", reason: "Vibrant and clear contrast" },
+          { color: "#F59E0B", name: "Amber", reason: "Harmonizes with warm undertones" },
         ],
         avoid: [
-          { color: "#9CA3AF", name: "Gray" },
-          { color: "#D4D4D8", name: "Silver" },
+          { color: "#9CA3AF", name: "Gray", reason: "Can look dull against olive skin" },
+          { color: "#D4D4D8", name: "Silver", reason: "Clashes with warm undertones" },
         ],
       };
     }
@@ -150,15 +166,15 @@ export default function Style() {
     if (skinTone.includes("tan") || skinTone.includes("brown") || skinTone.includes("caramel")) {
       return {
         recommended: [
-          { color: "#F97316", name: "Orange" },
-          { color: "#FBBF24", name: "Gold" },
-          { color: "#059669", name: "Teal" },
-          { color: "#E11D48", name: "Coral" },
-          { color: "#FFFFFF", name: "White" },
+          { color: "#F97316", name: "Orange", reason: "Radiant against tan skin" },
+          { color: "#FBBF24", name: "Gold", reason: "Enhances natural glow" },
+          { color: "#059669", name: "Teal", reason: "Stunning contrast" },
+          { color: "#E11D48", name: "Coral", reason: "Warm and complimentary" },
+          { color: "#FFFFFF", name: "White", reason: "Crisp and clean contrast" },
         ],
         avoid: [
-          { color: "#78716C", name: "Brown" },
-          { color: "#A8A29E", name: "Khaki" },
+          { color: "#78716C", name: "Brown", reason: "May blend in too much" },
+          { color: "#A8A29E", name: "Khaki", reason: "Can look muddy" },
         ],
       };
     }
@@ -167,15 +183,15 @@ export default function Style() {
     if (skinTone.includes("deep") || skinTone.includes("dark") || skinTone.includes("ebony")) {
       return {
         recommended: [
-          { color: "#FBBF24", name: "Gold" },
-          { color: "#F97316", name: "Tangerine" },
-          { color: "#EC4899", name: "Fuchsia" },
-          { color: "#22D3EE", name: "Cyan" },
-          { color: "#FFFFFF", name: "White" },
+          { color: "#FBBF24", name: "Gold", reason: "Pops beautifully against dark skin" },
+          { color: "#F97316", name: "Tangerine", reason: "Vibrant and energetic" },
+          { color: "#EC4899", name: "Fuchsia", reason: "Bold and striking" },
+          { color: "#22D3EE", name: "Cyan", reason: "High contrast and electric" },
+          { color: "#FFFFFF", name: "White", reason: "Classic high-contrast look" },
         ],
         avoid: [
-          { color: "#1F2937", name: "Black" },
-          { color: "#374151", name: "Charcoal" },
+          { color: "#1F2937", name: "Black", reason: "Can absorb too much light" },
+          { color: "#374151", name: "Charcoal", reason: "May lack definition" },
         ],
       };
     }
@@ -183,15 +199,15 @@ export default function Style() {
     // Default palette (if skin tone not detected)
     return {
       recommended: [
-        { color: "#10B981", name: "Emerald" },
-        { color: "#3B82F6", name: "Royal Blue" },
-        { color: "#8B5CF6", name: "Purple" },
-        { color: "#EC4899", name: "Pink" },
-        { color: "#F59E0B", name: "Gold" },
+        { color: "#10B981", name: "Emerald", reason: "Universally flattering" },
+        { color: "#3B82F6", name: "Royal Blue", reason: "Classic and sharp" },
+        { color: "#8B5CF6", name: "Purple", reason: "Rich and regal" },
+        { color: "#EC4899", name: "Pink", reason: "Fresh and lively" },
+        { color: "#F59E0B", name: "Gold", reason: "Adds warmth" },
       ],
       avoid: [
-        { color: "#6B7280", name: "Gray" },
-        { color: "#78716C", name: "Stone" },
+        { color: "#6B7280", name: "Gray", reason: "Can be draining" },
+        { color: "#78716C", name: "Stone", reason: "May look washed out" },
       ],
     };
   };
@@ -274,6 +290,35 @@ export default function Style() {
                       <ColorSwatch key={i} color={c.color} name={c.name} recommended={false} />
                     ))}
                   </View>
+                </View>
+
+                {/* Color Insights Section */}
+                <View style={styles.colorDivider} />
+
+                <View style={styles.insightsHeader}>
+                  <Ionicons name="bulb-outline" size={16} color={colors.text.tertiary} />
+                  <Text style={styles.insightsTitle}>Why these work for you</Text>
+                </View>
+
+                <View style={styles.insightsList}>
+                  {recommendedColors.slice(0, 3).map((c, i) => (
+                    <View key={i} style={styles.insightItem}>
+                      <View style={[styles.insightDot, { backgroundColor: c.color }]} />
+                      <Text style={styles.insightText}>
+                        <Text style={styles.insightName}>{c.name}: </Text>
+                        {c.reason || "Matches your skin undertone"}
+                      </Text>
+                    </View>
+                  ))}
+                  {avoidColors.slice(0, 1).map((c, i) => (
+                    <View key={`avoid-${i}`} style={styles.insightItem}>
+                      <View style={[styles.insightDot, { backgroundColor: c.color }]} />
+                      <Text style={styles.insightText}>
+                        <Text style={styles.insightName}>{c.name}: </Text>
+                        {c.reason || "Might not provide enough contrast"}
+                      </Text>
+                    </View>
+                  ))}
                 </View>
               </View>
             </View>
@@ -680,5 +725,44 @@ const styles = StyleSheet.create({
   },
   productsScroll: {
     gap: spacing[3],
+  },
+
+  // Color Insights
+  insightsHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing[2],
+    marginBottom: spacing[3],
+  },
+  insightsTitle: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: colors.text.tertiary,
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+  },
+  insightsList: {
+    gap: spacing[3],
+  },
+  insightItem: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: spacing[3],
+  },
+  insightDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    marginTop: 6,
+  },
+  insightText: {
+    flex: 1,
+    fontSize: 13,
+    color: colors.text.secondary,
+    lineHeight: 20,
+  },
+  insightName: {
+    fontWeight: "600",
+    color: colors.text.primary,
   },
 });
