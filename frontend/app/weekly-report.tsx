@@ -28,6 +28,7 @@ import {
     getScoreColor,
 } from "../theme";
 import { apiService } from "../services/api";
+import { CorrelationInsightCard, CorrelationInsight } from "../components/CorrelationInsightCard";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const CHART_HEIGHT = 180;
@@ -61,6 +62,19 @@ interface ReportInsights {
     activity_message: string;
 }
 
+interface DietCorrelations {
+    has_data: boolean;
+    message?: string;
+    correlations: CorrelationInsight[];
+    stats: {
+        food_logs_count: number;
+        scans_count: number;
+        days_analyzed: number;
+        avg_health_score?: number;
+        avg_skin_score?: number;
+    };
+}
+
 interface WeeklyReport {
     period: {
         start: string;
@@ -71,6 +85,7 @@ interface WeeklyReport {
     top_issues: TopIssue[];
     recommendations: string[];
     insights: ReportInsights;
+    diet_correlations?: DietCorrelations;
     generated_at: string;
 }
 
@@ -348,6 +363,33 @@ export default function WeeklyReport() {
                         <DailyScoreChart data={daily_scores} />
                     </View>
                 </View>
+
+                {/* Diet Impact Section */}
+                {report.diet_correlations && (
+                    <View style={styles.section}>
+                        <View style={styles.sectionHeader}>
+                            <Ionicons name="nutrition" size={20} color={colors.primary[600]} />
+                            <Text style={styles.sectionTitle}>Diet Impact</Text>
+                        </View>
+                        {report.diet_correlations.has_data ? (
+                            <View>
+                                {report.diet_correlations.correlations.map((insight, index) => (
+                                    <CorrelationInsightCard key={index} insight={insight} />
+                                ))}
+                            </View>
+                        ) : (
+                            <View style={styles.emptyDietCard}>
+                                <Ionicons name="leaf-outline" size={32} color={colors.neutral[300]} />
+                                <Text style={styles.emptyDietText}>
+                                    {report.diet_correlations.message || "Log more meals and scans to see correlations"}
+                                </Text>
+                                <Text style={styles.emptyDietHint}>
+                                    {report.diet_correlations.stats.food_logs_count} meals · {report.diet_correlations.stats.scans_count} scans
+                                </Text>
+                            </View>
+                        )}
+                    </View>
+                )}
 
                 {/* Top Issues */}
                 {top_issues.length > 0 && (
@@ -653,5 +695,33 @@ const styles = StyleSheet.create({
         flex: 1,
         ...textStyles.body,
         color: colors.text.secondary,
+    },
+
+    // Section Header (for icons)
+    sectionHeader: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: spacing[2],
+        marginBottom: spacing[3],
+    },
+
+    // Empty Diet Card
+    emptyDietCard: {
+        backgroundColor: colors.neutral[0],
+        borderRadius: radius.xl,
+        padding: spacing[6],
+        alignItems: "center",
+        ...shadows.sm,
+    },
+    emptyDietText: {
+        ...textStyles.body,
+        color: colors.text.tertiary,
+        textAlign: "center",
+        marginTop: spacing[3],
+    },
+    emptyDietHint: {
+        ...textStyles.caption,
+        color: colors.neutral[400],
+        marginTop: spacing[2],
     },
 });

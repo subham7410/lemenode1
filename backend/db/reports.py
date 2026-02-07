@@ -10,6 +10,7 @@ import logging
 
 from google.cloud.firestore_v1 import FieldFilter, Query
 from auth.firebase_admin import get_firestore_client
+from db.correlations import get_skin_diet_correlations
 
 logger = logging.getLogger("db.reports")
 
@@ -60,6 +61,9 @@ async def get_weekly_report(user_id: str) -> Dict[str, Any]:
     # Generate insights
     insights = _generate_insights(summary, current_week_scans)
     
+    # Get diet-skin correlations
+    diet_correlations = await get_skin_diet_correlations(user_id, days=14)
+    
     return {
         "period": {
             "start": week_start.date().isoformat(),
@@ -70,6 +74,7 @@ async def get_weekly_report(user_id: str) -> Dict[str, Any]:
         "top_issues": top_issues,
         "recommendations": recommendations,
         "insights": insights,
+        "diet_correlations": diet_correlations,
         "generated_at": now.isoformat()
     }
 
